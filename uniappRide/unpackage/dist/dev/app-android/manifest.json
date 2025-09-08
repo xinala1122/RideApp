@@ -1,0 +1,30 @@
+{
+  "id": "__UNI__7BB6FD0",
+  "name": "RideNavi",
+  "description": "",
+  "version": {
+    "name": "1.0.0",
+    "code": "100"
+  },
+  "uni-app-x": {
+    "compilerVersion": "4.76"
+  },
+  "app-android": {
+    "distribute": {
+      "modules": {},
+      "icons": {
+        "hdpi": "E:/12_temp/22_LE3/01_素材/6.喝水提醒15/a1.png",
+        "xhdpi": "E:/12_temp/22_LE3/01_素材/6.喝水提醒15/a1.png",
+        "xxhdpi": "E:/12_temp/22_LE3/01_素材/6.喝水提醒15/a1.png",
+        "xxxhdpi": ""
+      },
+      "splashScreens": {
+        "default": {}
+      },
+      "abiFilters": [
+        "x86",
+        "x86_64"
+      ]
+    }
+  }
+}

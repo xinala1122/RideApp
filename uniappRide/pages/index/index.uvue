@@ -1,0 +1,330 @@
+<template>
+	<view class="container">
+		<!-- 顶部数据区域 -->
+		<view class="data-section">
+			<text class="section-title">我的数据</text>
+			<view class="data-list">
+				<view class="data-list-item">
+					<text class="data-list-label">总里程</text>
+					<text class="data-list-value">{{totalDistance}} km</text>
+				</view>
+				<view class="data-list-item">
+					<text class="data-list-label">最快速度</text>
+					<text class="data-list-value">{{maxSpeed}} km/h</text>
+				</view>
+				<view class="data-list-item">
+					<text class="data-list-label">最长时间</text>
+					<text class="data-list-value">{{maxTime}} h</text>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 中间地图区域 -->
+		<view class="map-section">
+			<text class="section-title">地图区域</text>
+			<view class="map-container">
+				<!-- 地图内容将在这里显示 -->
+				<text>地图加载中...</text>
+			</view>
+		</view>
+		
+		<!-- 底部按钮区域 -->
+		<view class="button-section">
+			<view class="button-grid">
+				<view class="button-corner top-left free-ride" @click="freeRide">
+					<text class="button-text">自由骑</text>
+				</view>
+				<view class="button-corner top-right" @click="sameAsLast">
+					<text class="button-text">上次一样</text>
+				</view>
+				<view class="button-center start-riding" @click="startRiding">
+					<text class="button-text-large">开始骑行</text>
+				</view>
+				<view class="button-corner bottom-left" @click="selectDestination">
+					<text class="button-text">选择目的地</text>
+				</view>
+				<view class="button-corner bottom-right" @click="selectRoute">
+					<text class="button-text">选择路书</text>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 底部导航栏 -->
+		<view class="tab-bar">
+			<view class="tab-item" :class="{ active: activeTab === 'riding' }" @click="switchTab('riding')">
+				<text class="tab-text">骑行</text>
+			</view>
+			<view class="tab-item" :class="{ active: activeTab === 'discover' }" @click="switchTab('discover')">
+				<text class="tab-text">发现</text>
+			</view>
+			<view class="tab-item" :class="{ active: activeTab === 'profile' }" @click="switchTab('profile')">
+				<text class="tab-text">我的</text>
+			</view>
+		</view>
+	</view>
+</template>
+<script>
+	export default {
+		data() {
+			return {
+				// 数据展示
+				totalDistance: 0,
+				maxSpeed: 0,
+				maxTime: 0,
+				// 当前选中的标签页
+				activeTab: 'riding'
+			}
+		},
+		onLoad() {
+			// 页面加载时初始化数据
+			this.initData();
+		},
+		methods: {
+			// 初始化数据
+			initData() {
+				// 这里可以从本地存储或服务器获取数据
+				this.totalDistance = 128.5;
+				this.maxSpeed = 35.2;
+				this.maxTime = 4.5;
+			},
+			
+			// 按钮点击事件
+			startRiding() {
+				console.log('开始骑行');
+				// 实现开始骑行的逻辑
+			},
+			freeRide() {
+				console.log('自由骑模式');
+				// 实现自由骑模式的逻辑
+			},
+			sameAsLast() {
+				console.log('上次一样');
+				// 实现与上次相同的逻辑
+			},
+			selectDestination() {
+				console.log('选择目的地');
+				// 实现选择目的地的逻辑
+			},
+			selectRoute() {
+				console.log('选择路书');
+				// 实现选择路书的逻辑
+			},
+			
+			// 切换标签页
+			switchTab(tab) {
+				this.activeTab = tab;
+				console.log('切换到标签页:', tab);
+				if(tab === 'profile') {
+					// 跳转到我的页面
+					uni.switchTab({
+						url: '/pages/index/my'
+					});
+				}
+				if(tab === 'discover') {
+					// 跳转到我的页面
+					uni.switchTab({
+						url: '/pages/index/discover'
+					});
+				}
+			}
+		}
+	}
+</script>
+<style>
+	.container {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		padding: 10px;
+		padding-bottom: 60px; /* 为底部导航栏留出空间 */
+		background-color: #f5f5f5;
+	}
+
+	/* 顶部数据区域样式 */
+	.data-section {
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 10px; /* 减小内边距 */
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		height: 200px; /* 固定高度，减小一半左右 */
+	}
+	
+.section-title {
+		font-size: 16px; /* 减小字体大小 */
+		font-weight: bold;
+		margin-bottom: 5px; /* 减小下边距 */
+		color: #333;
+	}
+	
+	.data-list {
+		background-color: #f9f9f9;
+		border-radius: 8px;
+		overflow: hidden;
+		height: calc(100% - 25px); /* 计算剩余高度 */
+	}
+	.data-list-item {
+		display: flex;
+		justify-content: space-between;
+		padding: 8px 10px; /* 减小内边距 */
+		border-bottom: 1px solid #eee;
+	}
+	
+	.data-list-item:last-child {
+		border-bottom: none;
+	}
+	
+	.data-list-label {
+		font-size: 14px; /* 减小字体大小 */
+		color: #666;
+	}
+	
+	.data-list-value {
+		font-size: 14px; /* 减小字体大小 */
+		font-weight: bold;
+		color: #333;
+	}
+	/* 中间地图区域样式 */
+	.map-section {
+		flex: 1;
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		display: flex;
+		flex-direction: column;
+		min-height: 250px; /* 设置最小高度 */
+	}
+	
+	.map-container {
+		flex: 1;
+		background-color: #e0e0e0;
+		border-radius: 5px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	/* 底部按钮区域样式 */
+	.button-section {
+		height: 200px;
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+	}
+	
+	.button-grid {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+	
+	.button-corner {
+		position: absolute;
+		width: 80px;
+		height: 80px;
+		background-color: #4CAF50;
+		border-radius: 10px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.top-left {
+		top: 0;
+		left: 0;
+	}
+	
+	.top-right {
+		top: 0;
+		right: 0;
+	}
+	
+	.bottom-left {
+		bottom: 0;
+		left: 0;
+	}
+	
+	.bottom-right {
+		bottom: 0;
+		right: 0;
+	}
+	
+	.button-center {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 100px;
+		height: 100px;
+		background-color: #FF5722;
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+	}
+	
+	.button-text {
+		color: white;
+		font-size: 12px;
+		text-align: center;
+	}
+	
+	.button-text-large {
+		color: white;
+		font-size: 16px;
+		font-weight: bold;
+		text-align: center;
+	}
+	/* 自由骑按钮样式 - 使用原来的开始骑行按钮颜色 */
+	.free-ride {
+		background-color: #FF5722;
+	}
+	
+	/* 开始骑行按钮样式 - 使用原来的自由骑按钮颜色 */
+	.start-riding {
+		background-color: #20e95cff;
+	}
+	.tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background-color: #ffffff;
+    display: flex;
+	flex-direction: row; /* 明确指定为行布局 */
+    justify-content: space-between; /* 左中右布局 */
+    align-items: center; /* 垂直居中 */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.tab-item {
+    flex: 1; /* 每个项目占据相等的空间 */
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center; /* 文本居中 */
+}
+
+	
+	.tab-item.active {
+		border-bottom: 2px solid #FF5722;
+	}
+	
+	.tab-text {
+		font-size: 16px;
+		color: #666;
+	}
+	
+	.tab-item.active .tab-text {
+		color: #FF5722;
+		font-weight: bold;
+	}
+</style>

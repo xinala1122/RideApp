@@ -1,0 +1,416 @@
+
+	const __sfc__ = defineComponent({
+		data() {
+			return {
+				// 数据展示
+				totalDistance: 128.5,
+				maxSpeed: 35.2,
+				maxTime: 4.5,
+				// 历史骑行数据
+				historyData: [
+					{
+						date: '2023-06-15',
+						time: '14:30 - 16:45',
+						location: '城市公园'
+					},
+					{
+						date: '2023-06-10',
+						time: '09:15 - 11:30',
+						location: '湖边绿道'
+					},
+					{
+						date: '2023-06-05',
+						time: '16:00 - 18:20',
+						location: '山地赛道'
+					},
+					{
+						date: '2023-05-28',
+						time: '10:30 - 13:15',
+						location: '滨江路'
+					}
+				],
+				// 设备信息
+				deviceName: '智能骑行传感器 A1',
+				deviceStatus: '未连接',
+				// 蓝牙相关数据
+				isSearching: false,
+				discoveredDevices: [],
+				connectedDeviceId: '',
+				// 当前选中的标签页
+				activeTab: 'history'
+			}
+		},
+		onLoad() {
+			// 页面加载时初始化数据
+			this.initData();
+			// 初始化蓝牙适配器
+			this.initBluetooth();
+		},
+		methods: {
+			// 初始化数据
+			initData() {
+				// 这里可以从本地存储或服务器获取数据
+				console.log('历史页面数据初始化');
+			},
+			
+			// 初始化蓝牙适配器
+			initBluetooth() {
+				console.log('初始化蓝牙适配器');
+				// 检查蓝牙是否可用
+				if (uni.getSystemInfoSync().platform === 'android') {
+					// Android平台
+					plus.android.importClass('android.bluetooth.BluetoothAdapter');
+					const BluetoothAdapter = plus.android.runtimeMainActivity().getSystemService('bluetooth');
+					if (!BluetoothAdapter.isEnabled()) {
+						this.deviceStatus = '蓝牙未开启';
+						return;
+					}
+				} else if (uni.getSystemInfoSync().platform === 'ios') {
+					// iOS平台
+					const bluetooth = plus.ios.import('CoreBluetooth');
+					if (!bluetooth) {
+						this.deviceStatus = '蓝牙不可用';
+						return;
+					}
+				}
+				
+				// 监听蓝牙状态变化
+				uni.onBluetoothAdapterStateChange((res) => {
+					if (!res.available) {
+						this.deviceStatus = '蓝牙不可用';
+					}
+				});
+			},
+			
+			// 搜索设备
+			searchDevices() {
+				if (this.isSearching) {
+					console.log('正在搜索中，请稍候...');
+					return;
+				}
+				
+				console.log('开始搜索蓝牙设备');
+				this.isSearching = true;
+				this.deviceStatus = '搜索中...';
+				this.discoveredDevices = [];
+				
+				uni.getSystemInfoSync().platform = 'android'; // 模拟Android平台
+				this.searchAndroidDevices();
+				// 根据平台使用不同的API
+				if (uni.getSystemInfoSync().platform === 'android') {
+					this.searchAndroidDevices();
+				} else if (uni.getSystemInfoSync().platform === 'ios') {
+					//this.searchIOSDevices();
+				}
+			},
+			
+			// Android平台搜索设备
+			searchAndroidDevices() {
+				try {
+					const main = plus.android.runtimeMainActivity();
+					const Context = plus.android.importClass("android.content.Context");
+					const BluetoothAdapter = plus.android.importClass("android.bluetooth.BluetoothAdapter");
+					const BDevice = plus.android.importClass("android.bluetooth.BluetoothDevice");
+					
+					const mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+					if (!mBluetoothAdapter.isEnabled()) {
+						this.deviceStatus = '蓝牙未开启';
+						this.isSearching = false;
+						return;
+					}
+					
+					// 开始搜索
+					mBluetoothAdapter.startDiscovery();
+					
+					// 注册广播接收器
+					const IntentFilter = plus.android.importClass('android.content.IntentFilter');
+					const filter = new IntentFilter();
+					filter.addAction(BluetoothDevice.ACTION_FOUND);
+					filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+					
+					const receiver = plus.android.implements('io.dcloud.feature.internal.reflect.BroadcastReceiver', {
+						onReceive: (context, intent) => {
+							const action = intent.getAction();
+							if (action === BluetoothDevice.ACTION_FOUND) {
+								const device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+								const deviceInfo = {
+									deviceId: device.getAddress(),
+									name: device.getName(),
+									RSSI: intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, 0)
+								};
+								
+								// 过滤设备
+								if (deviceInfo.name && deviceInfo.name.includes('AINSTEC_')) {
+									const exists = this.discoveredDevices.some(d => d.deviceId === deviceInfo.deviceId);
+									if (!exists) {
+										this.discoveredDevices.push(deviceInfo);
+									}
+								}
+							} else if (action === BluetoothAdapter.ACTION_DISCOVERY_FINISHED) {
+								this.stopSearchDevices();
+							}
+						}
+					});
+					
+					main.registerReceiver(receiver, filter);
+					
+					// 10秒后停止搜索
+					setTimeout(() => {
+						this.stopSearchDevices();
+						main.unregisterReceiver(receiver);
+					}, 10000);
+					
+				} catch (e) {
+					console.error('Android蓝牙搜索失败', e);
+					this.isSearching = false;
+					this.deviceStatus = '搜索失败';
+				}
+			},
+			
+			// iOS平台搜索设备
+			searchIOSDevices() {
+				try {
+					const manager = plus.ios.import('CoreBluetooth.CBCentralManager');
+					const delegate = plus.ios.implements('CoreBluetooth.CBCentralManagerDelegate', {
+						centralManagerDidUpdateState: (central) => {
+							if (central.state() === 5) { // CBCentralManagerStatePoweredOn
+								// 蓝牙已开启，开始扫描
+								central.scanForPeripheralsWithServices_options_(null, null);
+							} else {
+								this.deviceStatus = '蓝牙未开启';
+								this.isSearching = false;
+							}
+						},
+						centralManagerDidDiscoverPeripheralAdvertisementDataRSSI: (central, peripheral, advertisementData, RSSI) => {
+							const deviceInfo = {
+								deviceId: peripheral.identifier().UUIDString(),
+								name: peripheral.name(),
+								RSSI: RSSI
+							};
+							
+							// 过滤设备
+							if (deviceInfo.name && deviceInfo.name.includes('骑行')) {
+								const exists = this.discoveredDevices.some(d => d.deviceId === deviceInfo.deviceId);
+								if (!exists) {
+									this.discoveredDevices.push(deviceInfo);
+								}
+							}
+						}
+					});
+					
+					const centralManager = manager.alloc().initWithDelegate_queue_(delegate, null);
+					
+					// 10秒后停止搜索
+					setTimeout(() => {
+						centralManager.stopScan();
+						this.stopSearchDevices();
+					}, 10000);
+					
+				} catch (e) {
+					console.error('iOS蓝牙搜索失败', e);
+					this.isSearching = false;
+					this.deviceStatus = '搜索失败';
+				}
+			},
+			
+			// 停止搜索设备
+			stopSearchDevices() {
+				console.log('停止搜索蓝牙设备');
+				this.isSearching = false;
+				if (this.discoveredDevices.length === 0) {
+					this.deviceStatus = '未找到设备';
+				} else {
+					this.deviceStatus = '找到 ' + this.discoveredDevices.length + ' 个设备';
+				}
+			},
+			
+			// 连接设备
+			connectDevice(device) {
+				console.log('连接设备', device);
+				this.deviceStatus = '连接中...';
+				
+				// 根据平台使用不同的连接方式
+				if (uni.getSystemInfoSync().platform === 'android') {
+					this.connectAndroidDevice(device);
+				} else if (uni.getSystemInfoSync().platform === 'ios') {
+					this.connectIOSDevice(device);
+				}
+			},
+			
+			// Android平台连接设备
+			connectAndroidDevice(device) {
+				try {
+					const BluetoothAdapter = plus.android.importClass("android.bluetooth.BluetoothAdapter");
+					const BluetoothDevice = plus.android.importClass("android.bluetooth.BluetoothDevice");
+					
+					const mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+					const remoteDevice = mBluetoothAdapter.getRemoteDevice(device.deviceId);
+					
+					// 连接设备
+					const socket = remoteDevice.createRfcommSocketToServiceRecord(
+						java.util.UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+					);
+					socket.connect();
+					
+					this.connectedDeviceId = device.deviceId;
+					this.deviceName = device.name || '未知设备';
+					this.deviceStatus = '已连接';
+					
+					// 停止搜索
+					this.stopSearchDevices();
+					
+				} catch (e) {
+					console.error('Android蓝牙连接失败', e);
+					this.deviceStatus = '连接失败';
+				}
+			},
+			
+			// iOS平台连接设备
+			connectIOSDevice(device) {
+				try {
+					const manager = plus.ios.import('CoreBluetooth.CBCentralManager');
+					const delegate = plus.ios.implements('CoreBluetooth.CBCentralManagerDelegate', {
+						centralManagerDidConnectPeripheral: (central, peripheral) => {
+							this.connectedDeviceId = device.deviceId;
+							this.deviceName = device.name || '未知设备';
+							this.deviceStatus = '已连接';
+							
+							// 停止搜索
+							this.stopSearchDevices();
+						},
+						centralManagerDidFailToConnectPeripheral_error: (central, peripheral, error) => {
+							console.error('iOS蓝牙连接失败', error);
+							this.deviceStatus = '连接失败';
+						}
+					});
+					
+					const centralManager = manager.alloc().initWithDelegate_queue_(delegate, null);
+					
+					// 获取已发现的设备并连接
+					const peripherals = centralManager.retrievePeripheralsWithIdentifiers_([device.deviceId]);
+					if (peripherals.length > 0) {
+						centralManager.connectPeripheral_options_(peripherals[0], null);
+					} else {
+						this.deviceStatus = '设备未找到';
+					}
+					
+				} catch (e) {
+					console.error('iOS蓝牙连接失败', e);
+					this.deviceStatus = '连接失败';
+				}
+			},
+			
+			// 切换标签页
+			switchTab(tab) {
+				this.activeTab = tab;
+				console.log('切换到标签页:', tab);
+				// 这里可以添加切换标签页的逻辑
+				if(tab === 'riding') {
+					// 跳转到骑行页面
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+				}
+			}
+		}
+	})
+
+export default __sfc__
+function GenPagesIndexMyRender(this: InstanceType<typeof __sfc__>): any | null {
+const _ctx = this
+const _cache = this.$.renderCache
+  return _cE("view", _uM({ class: "container" }), [
+    _cE("view", _uM({ class: "data-section" }), [
+      _cE("text", _uM({ class: "section-title" }), "我的数据"),
+      _cE("view", _uM({ class: "data-list" }), [
+        _cE("view", _uM({ class: "data-list-item" }), [
+          _cE("text", _uM({ class: "data-list-label" }), "总里程"),
+          _cE("text", _uM({ class: "data-list-value" }), _tD(_ctx.totalDistance) + " km", 1 /* TEXT */)
+        ]),
+        _cE("view", _uM({ class: "data-list-item" }), [
+          _cE("text", _uM({ class: "data-list-label" }), "最快速度"),
+          _cE("text", _uM({ class: "data-list-value" }), _tD(_ctx.maxSpeed) + " km/h", 1 /* TEXT */)
+        ]),
+        _cE("view", _uM({ class: "data-list-item" }), [
+          _cE("text", _uM({ class: "data-list-label" }), "最长时间"),
+          _cE("text", _uM({ class: "data-list-value" }), _tD(_ctx.maxTime) + " h", 1 /* TEXT */)
+        ])
+      ])
+    ]),
+    _cE("view", _uM({ class: "history-section" }), [
+      _cE("text", _uM({ class: "section-title" }), "历史骑行数据"),
+      _cE("view", _uM({ class: "history-list" }), [
+        _cE(Fragment, null, RenderHelpers.renderList(_ctx.historyData, (item, index, __index, _cached): any => {
+          return _cE("view", _uM({
+            class: "history-item",
+            key: index
+          }), [
+            _cE("view", _uM({ class: "history-date" }), [
+              _cE("text", _uM({ class: "date-text" }), _tD(item.date), 1 /* TEXT */)
+            ]),
+            _cE("view", _uM({ class: "history-details" }), [
+              _cE("text", _uM({ class: "time-text" }), _tD(item.time), 1 /* TEXT */),
+              _cE("text", _uM({ class: "location-text" }), _tD(item.location), 1 /* TEXT */)
+            ])
+          ])
+        }), 128 /* KEYED_FRAGMENT */)
+      ])
+    ]),
+    _cE("view", _uM({ class: "device-section" }), [
+      _cE("text", _uM({ class: "section-title" }), "我的设备"),
+      _cE("view", _uM({ class: "device-container" }), [
+        _cE("view", _uM({
+          class: "device-box",
+          onClick: _ctx.searchDevices
+        }), [
+          _cE("text", _uM({ class: "device-name" }), _tD(_ctx.deviceName), 1 /* TEXT */),
+          _cE("text", _uM({ class: "device-status" }), _tD(_ctx.deviceStatus), 1 /* TEXT */),
+          isTrue(_ctx.isSearching)
+            ? _cE("text", _uM({
+                key: 0,
+                class: "search-hint"
+              }), "搜索中...")
+            : _cC("v-if", true)
+        ], 8 /* PROPS */, ["onClick"])
+      ]),
+      _ctx.discoveredDevices.length > 0
+        ? _cE("view", _uM({
+            key: 0,
+            class: "device-list"
+          }), [
+            _cE(Fragment, null, RenderHelpers.renderList(_ctx.discoveredDevices, (device, index, __index, _cached): any => {
+              return _cE("view", _uM({
+                class: "device-list-item",
+                key: index,
+                onClick: () => {_ctx.connectDevice(device)}
+              }), [
+                _cE("text", _uM({ class: "device-item-name" }), _tD(device.name || '未知设备'), 1 /* TEXT */),
+                _cE("text", _uM({ class: "device-item-signal" }), "信号强度: " + _tD(device.RSSI) + "dBm", 1 /* TEXT */)
+              ], 8 /* PROPS */, ["onClick"])
+            }), 128 /* KEYED_FRAGMENT */)
+          ])
+        : _cC("v-if", true)
+    ]),
+    _cE("view", _uM({ class: "tab-bar" }), [
+      _cE("view", _uM({
+        class: _nC(["tab-item", _uM({ active: _ctx.activeTab === 'riding' })]),
+        onClick: () => {_ctx.switchTab('riding')}
+      }), [
+        _cE("text", _uM({ class: "tab-text" }), "骑行")
+      ], 10 /* CLASS, PROPS */, ["onClick"]),
+      _cE("view", _uM({
+        class: _nC(["tab-item", _uM({ active: _ctx.activeTab === 'history' })]),
+        onClick: () => {_ctx.switchTab('history')}
+      }), [
+        _cE("text", _uM({ class: "tab-text" }), "历史")
+      ], 10 /* CLASS, PROPS */, ["onClick"]),
+      _cE("view", _uM({
+        class: _nC(["tab-item", _uM({ active: _ctx.activeTab === 'profile' })]),
+        onClick: () => {_ctx.switchTab('profile')}
+      }), [
+        _cE("text", _uM({ class: "tab-text" }), "我的")
+      ], 10 /* CLASS, PROPS */, ["onClick"])
+    ])
+  ])
+}
+const GenPagesIndexMyStyles = [_uM([["container", _pS(_uM([["display", "flex"], ["flexDirection", "column"], ["paddingTop", 10], ["paddingRight", 10], ["paddingBottom", 60], ["paddingLeft", 10], ["backgroundColor", "#f5f5f5"]]))], ["data-section", _pS(_uM([["backgroundColor", "#ffffff"], ["borderTopLeftRadius", 10], ["borderTopRightRadius", 10], ["borderBottomRightRadius", 10], ["borderBottomLeftRadius", 10], ["paddingTop", 10], ["paddingRight", 10], ["paddingBottom", 10], ["paddingLeft", 10], ["marginBottom", 10], ["boxShadow", "0 2px 5px rgba(0,0,0,0.1)"], ["height", 200]]))], ["section-title", _pS(_uM([["fontSize", 16], ["fontWeight", "bold"], ["marginBottom", 5], ["color", "#333333"]]))], ["data-list", _pS(_uM([["backgroundColor", "#f9f9f9"], ["borderTopLeftRadius", 8], ["borderTopRightRadius", 8], ["borderBottomRightRadius", 8], ["borderBottomLeftRadius", 8], ["overflow", "hidden"]]))], ["data-list-item", _pS(_uM([["display", "flex"], ["justifyContent", "space-between"], ["paddingTop", 8], ["paddingRight", 10], ["paddingBottom", 8], ["paddingLeft", 10], ["borderBottomWidth", 1], ["borderBottomStyle", "solid"], ["borderBottomColor", "#eeeeee"], ["borderBottomWidth:last-child", "medium"], ["borderBottomStyle:last-child", "none"], ["borderBottomColor:last-child", "#000000"]]))], ["data-list-label", _pS(_uM([["fontSize", 14], ["color", "#666666"]]))], ["data-list-value", _pS(_uM([["fontSize", 14], ["fontWeight", "bold"], ["color", "#333333"]]))], ["history-section", _pS(_uM([["flex", 1], ["backgroundColor", "#ffffff"], ["borderTopLeftRadius", 10], ["borderTopRightRadius", 10], ["borderBottomRightRadius", 10], ["borderBottomLeftRadius", 10], ["paddingTop", 15], ["paddingRight", 15], ["paddingBottom", 15], ["paddingLeft", 15], ["marginBottom", 10], ["boxShadow", "0 2px 5px rgba(0,0,0,0.1)"], ["display", "flex"], ["flexDirection", "column"]]))], ["history-list", _pS(_uM([["flex", 1], ["overflowY", "auto"]]))], ["history-item", _pS(_uM([["display", "flex"], ["flexDirection", "column"], ["paddingTop", 15], ["paddingRight", 15], ["paddingBottom", 15], ["paddingLeft", 15], ["borderBottomWidth", 1], ["borderBottomStyle", "solid"], ["borderBottomColor", "#eeeeee"], ["borderBottomWidth:last-child", "medium"], ["borderBottomStyle:last-child", "none"], ["borderBottomColor:last-child", "#000000"]]))], ["history-date", _pS(_uM([["marginBottom", 8]]))], ["date-text", _pS(_uM([["fontSize", 16], ["fontWeight", "bold"], ["color", "#333333"]]))], ["history-details", _pS(_uM([["display", "flex"], ["justifyContent", "space-between"]]))], ["time-text", _pS(_uM([["fontSize", 14], ["color", "#666666"]]))], ["location-text", _pS(_uM([["fontSize", 14], ["color", "#666666"]]))], ["device-section", _pS(_uM([["backgroundColor", "#ffffff"], ["borderTopLeftRadius", 10], ["borderTopRightRadius", 10], ["borderBottomRightRadius", 10], ["borderBottomLeftRadius", 10], ["paddingTop", 15], ["paddingRight", 15], ["paddingBottom", 15], ["paddingLeft", 15], ["marginBottom", 10], ["boxShadow", "0 2px 5px rgba(0,0,0,0.1)"]]))], ["device-container", _pS(_uM([["display", "flex"], ["justifyContent", "center"], ["alignItems", "center"], ["paddingTop", 20], ["paddingRight", 0], ["paddingBottom", 20], ["paddingLeft", 0]]))], ["device-box", _pS(_uM([["width", 200], ["height", 120], ["backgroundColor", "#f0f0f0"], ["borderTopWidth", 2], ["borderRightWidth", 2], ["borderBottomWidth", 2], ["borderLeftWidth", 2], ["borderTopStyle", "dashed"], ["borderRightStyle", "dashed"], ["borderBottomStyle", "dashed"], ["borderLeftStyle", "dashed"], ["borderTopColor", "#cccccc"], ["borderRightColor", "#cccccc"], ["borderBottomColor", "#cccccc"], ["borderLeftColor", "#cccccc"], ["borderTopLeftRadius", 8], ["borderTopRightRadius", 8], ["borderBottomRightRadius", 8], ["borderBottomLeftRadius", 8], ["display", "flex"], ["flexDirection", "column"], ["justifyContent", "center"], ["alignItems", "center"], ["position", "relative"]]))], ["device-name", _pS(_uM([["fontSize", 16], ["fontWeight", "bold"], ["color", "#333333"], ["marginBottom", 8]]))], ["device-status", _pS(_uM([["fontSize", 14], ["color", "#FF5722"]]))], ["search-hint", _pS(_uM([["fontSize", 12], ["color", "#FF5722"], ["marginTop", 5]]))], ["device-list", _pS(_uM([["marginTop", 15], ["borderTopWidth", 1], ["borderTopStyle", "solid"], ["borderTopColor", "#eeeeee"], ["paddingTop", 15]]))], ["device-list-item", _pS(_uM([["display", "flex"], ["justifyContent", "space-between"], ["alignItems", "center"], ["paddingTop", 10], ["paddingRight", 15], ["paddingBottom", 10], ["paddingLeft", 15], ["borderBottomWidth", 1], ["borderBottomStyle", "solid"], ["borderBottomColor", "#eeeeee"], ["borderBottomWidth:last-child", "medium"], ["borderBottomStyle:last-child", "none"], ["borderBottomColor:last-child", "#000000"]]))], ["device-item-name", _pS(_uM([["fontSize", 14], ["color", "#333333"]]))], ["device-item-signal", _pS(_uM([["fontSize", 12], ["color", "#666666"]]))], ["tab-bar", _pS(_uM([["position", "fixed"], ["bottom", 0], ["left", 0], ["right", 0], ["height", 50], ["backgroundColor", "#ffffff"], ["display", "flex"], ["flexDirection", "row"], ["justifyContent", "space-between"], ["alignItems", "center"], ["boxShadow", "0 -2px 5px rgba(0,0,0,0.1)"], ["zIndex", 100]]))], ["tab-item", _uM([["", _uM([["flex", 1], ["height", "100%"], ["display", "flex"], ["justifyContent", "center"], ["alignItems", "center"], ["textAlign", "center"], ["justifyContent:first-child", "flex-start"], ["paddingLeft:first-child", 20], ["justifyContent:last-child", "flex-end"], ["paddingRight:last-child", 20]])], [".active", _uM([["borderBottomWidth", 2], ["borderBottomStyle", "solid"], ["borderBottomColor", "#FF5722"]])]])], ["tab-text", _uM([["", _uM([["fontSize", 16], ["color", "#666666"]])], [".tab-item.active ", _uM([["color", "#FF5722"], ["fontWeight", "bold"]])]])]])]

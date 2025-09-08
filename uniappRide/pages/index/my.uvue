@@ -1,0 +1,885 @@
+<template>
+	<view class="container">
+		<!-- 顶部数据区域 -->
+		<view class="data-section">
+			<text class="section-title">我的数据</text>
+			<view class="data-list">
+				<view class="data-list-item">
+					<text class="data-list-label">总里程</text>
+					<text class="data-list-value">{{totalDistance}} km</text>
+				</view>
+				<view class="data-list-item">
+					<text class="data-list-label">最快速度</text>
+					<text class="data-list-value">{{maxSpeed}} km/h</text>
+				</view>
+				<view class="data-list-item">
+					<text class="data-list-label">最长时间</text>
+					<text class="data-list-value">{{maxTime}} h</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 中间历史骑行数据区域 -->
+		<view class="history-section">
+			<text class="section-title">历史骑行数据</text>
+			<view class="history-list">
+				<view class="history-item" v-for="(item, index) in historyData" :key="index">
+					<view class="history-date">
+						<text class="date-text">{{item.date}}</text>
+					</view>
+					<view class="history-details">
+						<text class="time-text">{{item.time}}</text>
+						<text class="location-text">{{item.location}}</text>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 底部设备区域 -->
+		<view class="device-section">
+			<text class="section-title">我的设备</text>
+			<view class="device-container">
+				<view class="device-box" @click="toggleBluetooth">
+					<text class="device-name">{{deviceName}}</text>
+					<text class="device-status">{{deviceStatus}}</text>
+					<text class="search-hint" v-if="isSearching">搜索中...</text>
+				</view>
+			</view>
+			<!-- 设备列表 -->
+			<view class="device-list" v-if="discoveredDevices.length > 0">
+				<view class="device-list-item" v-for="(device, index) in discoveredDevices" :key="index"
+					@click="connectDevice(device)">
+					<text class="device-item-name">{{device.name || '未知设备'}}</text>
+					<text class="device-item-signal">信号强度: {{device.RSSI}}dBm</text>
+					<view class="device-item-actions">
+						<view class="action-button" @click.stop="disconnectDevice(device)" v-if="device.connected">
+							<text class="action-text">断开</text>
+						</view>
+						<view class="action-button" @click.stop="removeDevice(device)">
+							<text class="action-text">移除</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
+
+		<!-- 底部导航栏 -->
+		<view class="tab-bar">
+			<view class="tab-item" :class="{ active: activeTab === 'riding' }" @click="switchTab('riding')">
+				<text class="tab-text">骑行</text>
+			</view>
+			<view class="tab-item" :class="{ active: activeTab === 'history' }" @click="switchTab('history')">
+				<text class="tab-text">历史</text>
+			</view>
+			<view class="tab-item" :class="{ active: activeTab === 'profile' }" @click="switchTab('profile')">
+				<text class="tab-text">我的</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				// 数据展示
+				totalDistance: 128.5,
+				maxSpeed: 35.2,
+				maxTime: 4.5,
+				// 历史骑行数据
+				historyData: [
+					{
+						date: '2023-06-15',
+						time: '14:30 - 16:45',
+						location: '城市公园'
+					},
+					{
+						date: '2023-06-10',
+						time: '09:15 - 11:30',
+						location: '湖边绿道'
+					},
+					{
+						date: '2023-06-05',
+						time: '16:00 - 18:20',
+						location: '山地赛道'
+					},
+					{
+						date: '2023-05-28',
+						time: '10:30 - 13:15',
+						location: '滨江路'
+					}
+				],
+				// 设备信息
+				deviceName: '智能骑行传感器 A1',
+				deviceStatus: '未连接',
+				// 蓝牙相关数据
+				isSearching: false,
+				discoveredDevices: [],
+				connectedDeviceId: '',
+				bluetoothEnabled: false,
+				// 当前选中的标签页
+				activeTab: 'history'
+			}
+		},
+		onLoad() {
+			// 页面加载时初始化数据
+			this.initData();
+			// 初始化蓝牙适配器
+			this.initBluetooth();
+		},
+		methods: {
+			// 初始化数据
+			initData() {
+				// 这里可以从本地存储或服务器获取数据
+				console.log('我的页面数据初始化');
+			},
+
+			// 初始化蓝牙适配器
+			initBluetooth() {
+				console.log('初始化蓝牙适配器');
+
+				// 监听蓝牙状态变化
+				uni.onBluetoothAdapterStateChange((res) => {
+					if (!res.available) {
+						this.deviceStatus = '蓝牙不可用';
+						this.bluetoothEnabled = false;
+					} else {
+						this.bluetoothEnabled = true;
+						this.deviceStatus = '蓝牙已就绪';
+					}
+				});
+
+				// 检查蓝牙是否可用
+				uni.getBluetoothAdapterState({
+					success: (res) => {
+						console.log('getBluetoothAdapterState', res);
+						if (!res.available) {
+							this.deviceStatus = '蓝牙不可用';
+							this.bluetoothEnabled = false;
+						} else {
+							this.bluetoothEnabled = true;
+							this.deviceStatus = '蓝牙已就绪';
+						}
+					},
+					fail: (err) => {
+						console.error('获取蓝牙适配器状态失败', err);
+						this.deviceStatus = '蓝牙不可用';
+						this.bluetoothEnabled = false;
+					}
+				});
+			},
+
+
+			// 切换蓝牙开关
+			toggleBluetooth() {
+				if (this.bluetoothEnabled) {
+					this.closeBluetooth();
+				} else {
+					this.openBluetooth();
+				}
+			},
+
+
+
+			// 打开蓝牙
+			openBluetooth() {
+				console.log('打开蓝牙');
+				console.log(uni.getSystemInfoSync().platform);
+				if (uni.getSystemInfoSync().platform === 'android') {
+					// Android平台
+					uni.openBluetoothAdapter({
+						success: (res) => {
+							console.log('openBluetoothAdapter success', res);
+							this.bluetoothEnabled = true;
+							this.deviceStatus = '蓝牙已开启';
+							// 自动开始搜索设备
+							this.searchDevices();
+						},
+						fail: (res) => {
+							if (res.errCode === 10001) {
+								uni.onBluetoothAdapterStateChange((res) => {
+									console.log('onBluetoothAdapterStateChange', res);
+									if (res.available) {
+										this.bluetoothEnabled = true;
+										this.deviceStatus = '蓝牙已开启';
+										// 自动开始搜索设备
+										this.searchDevices();
+									}
+								});
+							}
+							this.deviceStatus = '蓝牙开启失败';
+						}
+					});
+				} else if (uni.getSystemInfoSync().platform === 'ios') {
+					// iOS平台
+					uni.openBluetoothAdapter({
+						success: (res) => {
+							console.log('openBluetoothAdapter success', res);
+							this.bluetoothEnabled = true;
+							this.deviceStatus = '蓝牙已开启';
+							// 自动开始搜索设备
+							this.searchDevices();
+						},
+						fail: (res) => {
+							this.deviceStatus = '蓝牙开启失败';
+						}
+					});
+				}
+			},
+
+			// 关闭蓝牙
+			closeBluetooth() {
+				console.log('关闭蓝牙');
+				uni.closeBluetoothAdapter({
+					success: (res) => {
+						console.log('关闭蓝牙适配器成功', res);
+						this.bluetoothEnabled = false;
+						this.deviceStatus = '蓝牙已关闭';
+						// 断开所有连接的设备
+						this.disconnectAllDevices();
+						// 清空设备列表
+						this.discoveredDevices = [];
+					},
+					fail: (err) => {
+						console.error('关闭蓝牙适配器失败', err);
+					}
+				});
+			},
+
+
+
+			// 搜索设备
+			searchDevices() {
+				if (!this.bluetoothEnabled) {
+					uni.showToast({
+						title: '请先开启蓝牙',
+						icon: 'none'
+					});
+					return;
+				}
+
+				if (this.isSearching) {
+					console.log('正在搜索中，请稍候...');
+					return;
+				}
+
+				console.log('开始搜索蓝牙设备');
+				this.isSearching = true;
+				this.deviceStatus = '搜索中...';
+				this.discoveredDevices = [];
+
+				
+				// 使用uni-app的蓝牙API
+				uni.openBluetoothAdapter({
+					success: (res) => {
+						console.log('蓝牙适配器已打开', res);
+
+						// 开始搜索设备
+						uni.startBluetoothDevicesDiscovery({
+							allowDuplicatesKey: true,  // 添加这一行，允许重复上报设备
+							success: (res) => {
+								console.log('开始搜索设备', res);
+
+								// 监听发现新设备事件
+								uni.onBluetoothDeviceFound((res) => {
+									console.log('发现新设备', res);
+									res.devices.forEach(device => {
+										if (!device.name && !device.localName) {
+											return;
+										}
+										const foundDevices = this.discoveredDevices;
+										const idx = this.inArray(foundDevices, 'deviceId', device.deviceId);
+										const data = {};
+										if (idx === -1) {
+											// 过滤设备，只显示名称中包含"AINSTEC_"的设备
+											if (device.name && device.name.includes('AINSTEC_')) {
+												this.discoveredDevices.push({
+													deviceId: device.deviceId,
+													name: device.name,
+													RSSI: device.RSSI,
+													connected: false
+												});
+											}
+										} else {
+											// 更新已存在的设备信息
+											this.discoveredDevices[idx] = {
+												...this.discoveredDevices[idx],
+												RSSI: device.RSSI,
+												name: device.name || this.discoveredDevices[idx].name
+											};
+										}
+									});
+								});
+							},
+							fail: (err) => {
+								console.error('搜索设备失败', err);
+								this.isSearching = false;
+								this.deviceStatus = '搜索失败';
+							}
+						});
+
+						// 10秒后停止搜索
+						setTimeout(() => {
+							this.stopSearchDevices();
+						}, 10000);
+					},
+					fail: (err) => {
+						console.error('打开蓝牙适配器失败', err);
+						this.isSearching = false;
+						this.deviceStatus = '蓝牙开启失败';
+					}
+				});
+			},
+
+			},
+
+
+
+
+
+	// 停止搜索设备
+	stopSearchDevices() {
+		console.log('停止搜索蓝牙设备');
+		uni.stopBluetoothDevicesDiscovery({
+			success: (res) => {
+				console.log('停止搜索设备成功', res);
+				this.isSearching = false;
+				if (this.discoveredDevices.length === 0) {
+					this.deviceStatus = '未找到设备';
+				} else {
+					this.deviceStatus = '找到 ' + this.discoveredDevices.length + ' 个设备';
+				}
+			},
+			fail: (err) => {
+				console.error('停止搜索设备失败', err);
+				this.isSearching = false;
+			}
+		});
+	},
+
+
+	// 连接设备
+	connectDevice(device) {
+		console.log('连接设备', device);
+		if (!this.bluetoothEnabled) {
+			uni.showToast({
+				title: '请先开启蓝牙',
+				icon: 'none'
+			});
+			return;
+		}
+
+		this.deviceStatus = '连接中...';
+
+		// 使用uni-app的蓝牙API连接设备
+		uni.createBLEConnection({
+			deviceId: device.deviceId,
+			success: (res) => {
+				console.log('连接设备成功', res);
+
+				// 更新设备状态
+				device.connected = true;
+				this.connectedDeviceId = device.deviceId;
+				this.deviceName = device.name || '未知设备';
+				this.deviceStatus = '已连接';
+
+				// 停止搜索
+				this.stopSearchDevices();
+
+				// 获取设备服务
+				this.getBLEDeviceServices(device.deviceId);
+
+				uni.showToast({
+					title: '连接成功',
+					icon: 'success'
+				});
+			},
+			fail: (err) => {
+				console.error('连接设备失败', err);
+				this.deviceStatus = '连接失败';
+
+				uni.showToast({
+					title: '连接失败',
+					icon: 'none'
+				});
+			}
+		});
+	},
+
+	// 断开设备连接
+	disconnectDevice(device) {
+		console.log('断开设备连接', device);
+
+		// 使用uni-app的蓝牙API断开连接
+		uni.closeBLEConnection({
+			deviceId: device.deviceId,
+			success: (res) => {
+				console.log('断开设备连接成功', res);
+
+				// 更新设备状态
+				device.connected = false;
+				if (this.connectedDeviceId === device.deviceId) {
+					this.connectedDeviceId = '';
+					this.deviceName = '智能骑行传感器 A1';
+					this.deviceStatus = '已断开';
+				}
+
+				uni.showToast({
+					title: '已断开连接',
+					icon: 'success'
+				});
+			},
+			fail: (err) => {
+				console.error('断开设备连接失败', err);
+
+				uni.showToast({
+					title: '断开失败',
+					icon: 'none'
+				});
+			}
+		});
+	},
+
+	// 断开所有设备连接
+	disconnectAllDevices() {
+		console.log('断开所有设备连接');
+
+		// 遍历所有已连接的设备并断开连接
+		this.discoveredDevices.forEach(device => {
+			if (device.connected) {
+				this.disconnectDevice(device);
+			}
+		});
+	},
+
+	// 移除设备
+	removeDevice(device) {
+		console.log('移除设备', device);
+
+		// 如果设备已连接，先断开连接
+		if (device.connected) {
+			this.disconnectDevice(device);
+		}
+
+		// 从设备列表中移除
+		const index = this.discoveredDevices.findIndex(d => d.deviceId === device.deviceId);
+		if (index !== -1) {
+			this.discoveredDevices.splice(index, 1);
+		}
+
+		// 如果移除的是当前连接的设备，重置状态
+		if (this.connectedDeviceId === device.deviceId) {
+			this.connectedDeviceId = '';
+			this.deviceName = '智能骑行传感器 A1';
+			this.deviceStatus = '已移除';
+		}
+
+		uni.showToast({
+			title: '已移除设备',
+			icon: 'success'
+		});
+	},
+
+	// 获取蓝牙设备服务
+	getBLEDeviceServices(deviceId) {
+		console.log('获取设备服务', deviceId);
+
+		uni.getBLEDeviceServices({
+			deviceId: deviceId,
+			success: (res) => {
+				console.log('获取设备服务成功', res);
+
+				// 遍历所有服务
+				res.services.forEach(service => {
+					console.log('服务UUID:', service.uuid);
+
+					// 获取服务特征值
+					this.getBLEDeviceCharacteristics(deviceId, service.uuid);
+				});
+			},
+			fail: (err) => {
+				console.error('获取设备服务失败', err);
+			}
+		});
+	},
+
+	// 获取蓝牙设备特征值
+	getBLEDeviceCharacteristics(deviceId, serviceId) {
+		console.log('获取设备特征值', deviceId, serviceId);
+
+		uni.getBLEDeviceCharacteristics({
+			deviceId: deviceId,
+			serviceId: serviceId,
+			success: (res) => {
+				console.log('获取设备特征值成功', res);
+
+				// 遍历所有特征值
+				res.characteristics.forEach(characteristic => {
+					console.log('特征值UUID:', characteristic.uuid);
+
+					// 如果特征值支持通知或指示，则启用通知
+					if (characteristic.properties.notify || characteristic.properties.indicate) {
+						this.notifyBLECharacteristicValueChange(deviceId, serviceId, characteristic.uuid);
+					}
+				});
+			},
+			fail: (err) => {
+				console.error('获取设备特征值失败', err);
+			}
+		});
+	},
+
+	// 启用蓝牙设备特征值变化通知
+	notifyBLECharacteristicValueChange(deviceId, serviceId, characteristicId) {
+		console.log('启用蓝牙设备特征值变化通知', deviceId, serviceId, characteristicId);
+
+		uni.notifyBLECharacteristicValueChange({
+			deviceId: deviceId,
+			serviceId: serviceId,
+			characteristicId: characteristicId,
+			state: true,
+			success: (res) => {
+				console.log('启用蓝牙设备特征值变化通知成功', res);
+
+				// 监听特征值变化
+				uni.onBLECharacteristicValueChange((res) => {
+					console.log('特征值变化', res);
+					// 这里可以处理接收到的数据
+					// 例如：this.handleReceivedData(res.value);
+				});
+			},
+			fail: (err) => {
+				console.error('启用蓝牙设备特征值变化通知失败', err);
+			}
+		});
+	},
+
+	// 处理接收到的数据
+	handleReceivedData(buffer) {
+		// 将ArrayBuffer转换为字符串
+		const str = this.ab2hex(buffer);
+		console.log('接收到的数据:', str);
+
+		// 这里可以根据实际协议解析数据
+		// 例如：解析传感器数据、控制命令等
+	},
+
+	// 在数组中查找特定值的索引
+	inArray(arr, key, val) {
+		for (let i = 0; i < arr.length; i++) {
+			if (arr[i][key] === val) {
+			return i;
+			}
+		}
+		return -1;
+	},
+
+	// ArrayBuffer转16进制字符串
+	ab2hex(buffer) {
+		const hexArr = Array.prototype.map.call(
+			new Uint8Array(buffer),
+			function (bit) {
+				return ('00' + bit.toString(16)).slice(-2)
+			}
+		)
+		return hexArr.join('');
+	},
+
+	// 切换标签页
+	switchTab(tab) {
+		this.activeTab = tab;
+		console.log('切换到标签页:', tab);
+		// 这里可以添加切换标签页的逻辑
+		if (tab === 'riding') {
+			// 跳转到骑行页面
+			uni.switchTab({
+				url: '/pages/index/index'
+			});
+		}
+	}
+	}
+</script>
+
+<style>
+	.container {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		padding: 10px;
+		padding-bottom: 60px;
+		/* 为底部导航栏留出空间 */
+		background-color: #f5f5f5;
+	}
+
+	/* 顶部数据区域样式 */
+	.data-section {
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 10px;
+		/* 减小内边距 */
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		height: 200px;
+		/* 固定高度，减小一半左右 */
+	}
+
+	.section-title {
+		font-size: 16px;
+		/* 减小字体大小 */
+		font-weight: bold;
+		margin-bottom: 5px;
+		/* 减小下边距 */
+		color: #333;
+	}
+
+	.data-list {
+		background-color: #f9f9f9;
+		border-radius: 8px;
+		overflow: hidden;
+		height: calc(100% - 25px);
+		/* 计算剩余高度 */
+	}
+
+	.data-list-item {
+		display: flex;
+		justify-content: space-between;
+		padding: 8px 10px;
+		/* 减小内边距 */
+		border-bottom: 1px solid #eee;
+	}
+
+	.data-list-item:last-child {
+		border-bottom: none;
+	}
+
+	.data-list-label {
+		font-size: 14px;
+		/* 减小字体大小 */
+		color: #666;
+	}
+
+	.data-list-value {
+		font-size: 14px;
+		/* 减小字体大小 */
+		font-weight: bold;
+		color: #333;
+	}
+
+	/* 中间历史骑行数据区域样式 */
+	.history-section {
+		flex: 1;
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		display: flex;
+		flex-direction: column;
+	}
+
+	.history-list {
+		flex: 1;
+		overflow-y: auto;
+	}
+
+	.history-item {
+		display: flex;
+		flex-direction: column;
+		padding: 15px;
+		border-bottom: 1px solid #eee;
+	}
+
+	.history-item:last-child {
+		border-bottom: none;
+	}
+
+	.history-date {
+		margin-bottom: 8px;
+	}
+
+	.date-text {
+		font-size: 16px;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.history-details {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.time-text {
+		font-size: 14px;
+		color: #666;
+	}
+
+	.location-text {
+		font-size: 14px;
+		color: #666;
+	}
+
+	/* 底部设备区域样式 */
+	.device-section {
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	}
+
+	.device-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 20px 0;
+	}
+
+	.device-box {
+		width: 200px;
+		height: 120px;
+		background-color: #f0f0f0;
+		border: 2px dashed #ccc;
+		border-radius: 8px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		position: relative;
+	}
+
+	.device-name {
+		font-size: 16px;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 8px;
+	}
+
+	.device-status {
+		font-size: 14px;
+		color: #FF5722;
+	}
+
+	.search-hint {
+		font-size: 12px;
+		color: #FF5722;
+		margin-top: 5px;
+	}
+
+	.device-list {
+		margin-top: 15px;
+		border-top: 1px solid #eee;
+		padding-top: 15px;
+	}
+
+	.device-list-item {
+		display: flex;
+		flex-direction: column;
+		padding: 15px;
+		border-bottom: 1px solid #eee;
+		background-color: #f9f9f9;
+		border-radius: 8px;
+		margin-bottom: 10px;
+	}
+
+	.device-list-item:last-child {
+		border-bottom: none;
+		margin-bottom: 0;
+	}
+
+	.device-item-name {
+		font-size: 16px;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 5px;
+	}
+
+	.device-item-signal {
+		font-size: 12px;
+		color: #666;
+		margin-bottom: 10px;
+	}
+
+	.device-item-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 10px;
+	}
+
+	.action-button {
+		padding: 5px 10px;
+		background-color: #f0f0f0;
+		border-radius: 4px;
+		font-size: 12px;
+		color: #333;
+	}
+
+	.action-button:active {
+		background-color: #e0e0e0;
+	}
+
+
+
+	/* 底部导航栏样式 */
+	.tab-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 50px;
+		background-color: #ffffff;
+		display: flex;
+		flex-direction: row;
+		/* 明确指定为行布局 */
+		justify-content: space-between;
+		/* 左中右布局 */
+		align-items: center;
+		/* 垂直居中 */
+		box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+		z-index: 100;
+	}
+
+	.tab-item {
+		flex: 1;
+		/* 每个项目占据相等的空间 */
+		height: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		text-align: center;
+		/* 文本居中 */
+	}
+
+	.tab-item:first-child {
+		justify-content: flex-start;
+		/* 第一个项目左对齐 */
+		padding-left: 20px;
+		/* 左边添加一些内边距 */
+	}
+
+	.tab-item:last-child {
+		justify-content: flex-end;
+		/* 最后一个项目右对齐 */
+		padding-right: 20px;
+		/* 右边添加一些内边距 */
+	}
+
+	.tab-item:nth-child(2) {
+		justify-content: center;
+		/* 中间项目居中 */
+	}
+
+	.tab-item.active {
+		border-bottom: 2px solid #FF5722;
+	}
+
+	.tab-text {
+		font-size: 16px;
+		color: #666;
+	}
+
+	.tab-item.active .tab-text {
+		color: #FF5722;
+		font-weight: bold;
+	}
+</style>

@@ -1,0 +1,439 @@
+<template>
+	<view class="container">
+		<!-- 顶部banner区域 -->
+		<view class="banner-section">
+			<swiper class="banner-swiper" indicator-dots autoplay circular>
+				<swiper-item v-for="(item, index) in bannerList" :key="index">
+					<image class="banner-image" :src="item.image" mode="aspectFill"></image>
+				</swiper-item>
+			</swiper>
+		</view>
+		
+		<!-- 中间功能按钮区域 -->
+		<view class="function-section">
+			<view class="function-row">
+				<view class="function-item" @click="navigateTo('ranking')">
+					<image class="function-icon" src="/static/icons/ranking.png"></image>
+					<text class="function-text">好物排行</text>
+				</view>
+				<view class="function-item" @click="navigateTo('making')">
+					<image class="function-icon" src="/static/icons/making.png"></image>
+					<text class="function-text">美图制作</text>
+				</view>
+				<view class="function-item" @click="navigateTo('tutorial')">
+					<image class="function-icon" src="/static/icons/tutorial.png"></image>
+					<text class="function-text">教程分享</text>
+				</view>
+			</view>
+			<view class="function-row">
+				<view class="function-item" @click="navigateTo('local')">
+					<image class="function-icon" src="/static/icons/local.png"></image>
+					<text class="function-text">本地排行</text>
+				</view>
+				<view class="function-item" @click="navigateTo('find-route')">
+					<image class="function-icon" src="/static/icons/find-route.png"></image>
+					<text class="function-text">路书查找</text>
+				</view>
+				<view class="function-item" @click="navigateTo('make-route')">
+					<image class="function-icon" src="/static/icons/make-route.png"></image>
+					<text class="function-text">路书制作</text>
+				</view>
+			</view>
+		</view>
+
+
+		
+		<!-- 底部互动区域 -->
+		<view class="interaction-section">
+			<text class="section-title">互动区域</text>
+			<view class="interaction-list">
+				<view class="interaction-item" v-for="(item, index) in interactionList" :key="index">
+					<view class="user-info">
+						<image class="user-avatar" :src="item.avatar"></image>
+						<text class="user-name">{{item.name}}</text>
+					</view>
+					<text class="interaction-content">{{item.content}}</text>
+					<view class="interaction-images" v-if="item.images && item.images.length > 0">
+						<image 
+							class="interaction-image" 
+							v-for="(img, imgIndex) in item.images" 
+							:key="imgIndex" 
+							:src="img" 
+							mode="aspectFill"
+							@click="previewImage(item.images, imgIndex)">
+						</image>
+					</view>
+					<view class="interaction-footer">
+						<text class="interaction-time">{{item.time}}</text>
+						<view class="interaction-actions">
+							<view class="action-item" @click="likeItem(index)">
+								<text class="action-icon" :class="{ liked: item.liked }">❤️</text>
+								<text class="action-count">{{item.likes}}</text>
+							</view>
+							<view class="action-item" @click="commentItem(index)">
+								<text class="action-icon">💬</text>
+								<text class="action-count">{{item.comments}}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 底部导航栏 -->
+		<view class="tab-bar">
+			<view class="tab-item" :class="{ active: activeTab === 'riding' }" @click="switchTab('riding')">
+				<text class="tab-text">骑行</text>
+			</view>
+			<view class="tab-item" :class="{ active: activeTab === 'discover' }" @click="switchTab('discover')">
+				<text class="tab-text">发现</text>
+			</view>
+			<view class="tab-item" :class="{ active: activeTab === 'profile' }" @click="switchTab('profile')">
+				<text class="tab-text">我的</text>
+			</view>
+		</view>
+	</view>
+</template>
+<script>
+	export default {
+		data() {
+			return {
+				// Banner数据
+				bannerList: [
+					{ image: '/static/banner/banner1.jpg' },
+					{ image: '/static/banner/banner2.jpg' },
+					{ image: '/static/banner/banner3.jpg' }
+				],
+				// 互动区域数据
+				interactionList: [
+					{
+						avatar: '/static/avatars/user1.jpg',
+						name: '骑行达人',
+						content: '今天骑行了30公里，风景太美了！分享给大家看看。',
+						images: [
+							'/static/images/ride1.jpg',
+							'/static/images/ride2.jpg'
+						],
+						time: '2小时前',
+						likes: 24,
+						comments: 8,
+						liked: false
+					},
+					{
+						avatar: '/static/avatars/user2.jpg',
+						name: '山地车爱好者',
+						content: '发现了一条超棒的山地骑行路线，难度适中，风景优美，推荐给大家！',
+						images: [
+							'/static/images/mountain1.jpg'
+						],
+						time: '5小时前',
+						likes: 56,
+						comments: 12,
+						liked: true
+					}
+				],
+				// 当前选中的标签页
+				activeTab: 'discover'
+			}
+		},
+		onLoad() {
+			// 页面加载时初始化数据
+			this.initData();
+		},
+		methods: {
+			// 初始化数据
+			initData() {
+				console.log('发现页面数据初始化');
+			},
+			
+			// 导航到功能页面
+			navigateTo(page) {
+				console.log('导航到页面:', page);
+				// 这里可以实现具体页面跳转逻辑
+			},
+			
+			// 点赞互动内容
+			likeItem(index) {
+				this.interactionList[index].liked = !this.interactionList[index].liked;
+				if (this.interactionList[index].liked) {
+					this.interactionList[index].likes++;
+				} else {
+					this.interactionList[index].likes--;
+				}
+			},
+			
+			// 评论互动内容
+			commentItem(index) {
+				console.log('评论内容:', index);
+				// 这里可以实现评论功能
+			},
+			
+			// 预览图片
+			previewImage(images, current) {
+				uni.previewImage({
+					urls: images,
+					current: current
+				});
+			},
+			
+			// 切换标签页
+			switchTab(tab) {
+				this.activeTab = tab;
+				console.log('切换到标签页:', tab);
+				if(tab === 'riding') {
+					// 跳转到骑行页面..
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+				} else if(tab === 'profile') {
+					// 跳转到我的页面
+					uni.switchTab({
+						url: '/pages/index/my'
+					});
+				}
+			}
+		}
+	}
+</script>
+<style>
+	.container {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		padding: 10px;
+		padding-bottom: 60px; /* 为底部导航栏留出空间 */
+		background-color: #f5f5f5ff;
+	}
+
+	/* 顶部banner区域样式 */
+	.banner-section {
+		height: 80px; /* 减小banner高度 */
+		border-radius: 10px;
+		overflow: hidden;
+		margin-bottom: 10px;
+	}
+	
+	.banner-swiper {
+		width: 100%;
+		height: 100%;
+	}
+	
+	.banner-image {
+		width: 100%;
+		height: 100%;
+	}
+	/* 中间功能按钮区域样式 */
+	.function-section {
+		background-color: #bcc4d6ff;
+		border-radius: 10px;
+		padding: 10px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		height: 130px;
+		overflow: visible;
+	}
+	
+	.function-row {
+		display: flex;
+		flex: 1; 
+		flex-direction: row; /* 明确指定为行布局 */
+		justify-content: space-between;
+		margin-bottom: 10px;
+		width: 100%;
+		height: 50px;
+		position: relative;
+		flex-wrap: nowrap; /* 确保不换行 */
+	}
+	
+	.function-row:last-child {
+		margin-bottom: 0;
+	}
+	
+	.function-item {
+		flex: 1;      
+		width: calc(33% - 10px);  /*使用calc计算宽度，减去间距 */
+		display: flex;
+		/*flex-direction: column;*/
+		align-items: center;
+		padding: 5px 0;
+		box-sizing: border-box;
+		background-color: #f1f2f5ff;
+		border-radius: 5px;
+		justify-content: center;
+		height: 100%;
+		flex: 0 0 auto; /* 不伸缩，不压缩 */
+		position: relative;
+		z-index: 1;
+		overflow: visible;
+		max-width: calc(33.33% - 10px); /* 设置最大宽度 */
+	}
+
+	.function-item:active {
+		background-color: #f5f5f5;
+	}
+	
+	.function-icon {
+		width: 20px;
+		height: 20px;
+		margin-bottom: 5px;
+		display: block;
+	}
+	
+	.function-text {
+		font-size: 12px;
+		color: #333;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: block;
+		text-align: center;
+	}
+
+	
+	/* 底部互动区域样式 */
+	.interaction-section {
+		flex: 1;
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		display: flex;
+		flex-direction: column;
+	}
+	
+	.section-title {
+		font-size: 18px;
+		font-weight: bold;
+		margin-bottom: 10px;
+		color: #333;
+	}
+	
+	.interaction-list {
+		flex: 1;
+		overflow-y: auto;
+	}
+	
+	.interaction-item {
+		padding: 15px 0;
+		border-bottom: 1px solid #eee;
+	}
+	
+	.interaction-item:last-child {
+		border-bottom: none;
+	}
+	
+	.user-info {
+		display: flex;
+		align-items: center;
+		margin-bottom: 10px;
+	}
+	
+	.user-avatar {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		margin-right: 10px;
+	}
+	
+	.user-name {
+		font-size: 16px;
+		font-weight: bold;
+		color: #333;
+	}
+	
+	.interaction-content {
+		font-size: 16px;
+		color: #333;
+		margin-bottom: 10px;
+		line-height: 1.5;
+	}
+	
+	.interaction-images {
+		display: flex;
+		flex-wrap: wrap;
+		margin-bottom: 10px;
+	}
+	
+	.interaction-image {
+		width: 100px;
+		height: 100px;
+		margin-right: 5px;
+		margin-bottom: 5px;
+		border-radius: 5px;
+	}
+	
+	.interaction-footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+	
+	.interaction-time {
+		font-size: 12px;
+		color: #999;
+	}
+	
+	.interaction-actions {
+		display: flex;
+	}
+	
+	.action-item {
+		display: flex;
+		align-items: center;
+		margin-left: 15px;
+	}
+	
+	.action-icon {
+		font-size: 16px;
+		margin-right: 5px;
+	}
+	
+	.action-icon.liked {
+		color: #FF5722;
+	}
+	
+	.action-count {
+		font-size: 12px;
+		color: #666;
+	}
+	
+	/* 底部导航栏样式 */
+	.tab-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 50px;
+		background-color: #ffffff;
+		display: flex;
+		flex-direction: row; /* 明确指定为行布局 */
+		justify-content: space-between; /* 左中右布局 */
+		align-items: center; /* 垂直居中 */
+		box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+		z-index: 100;
+	}
+	
+	.tab-item {
+		flex: 1; /* 每个项目占据相等的空间 */
+		height: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		text-align: center; /* 文本居中 */
+	}
+	
+	.tab-item.active {
+		border-bottom: 2px solid #FF5722;
+	}
+	
+	.tab-text {
+		font-size: 16px;
+		color: #666;
+	}
+	
+	.tab-item.active .tab-text {
+		color: #FF5722;
+		font-weight: bold;
+	}
+</style>

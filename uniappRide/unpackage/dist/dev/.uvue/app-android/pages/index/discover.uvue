@@ -1,0 +1,266 @@
+const __sfc__ = defineComponent({
+    data() {
+        return {
+            // Banner数据
+            bannerList: [
+                { image: '/static/banner/banner1.jpg' },
+                { image: '/static/banner/banner2.jpg' },
+                { image: '/static/banner/banner3.jpg' }
+            ],
+            // 互动区域数据
+            interactionList: [
+                {
+                    avatar: '/static/avatars/user1.jpg',
+                    name: '骑行达人',
+                    content: '今天骑行了30公里，风景太美了！分享给大家看看。',
+                    images: [
+                        '/static/images/ride1.jpg',
+                        '/static/images/ride2.jpg'
+                    ],
+                    time: '2小时前',
+                    likes: 24,
+                    comments: 8,
+                    liked: false
+                },
+                {
+                    avatar: '/static/avatars/user2.jpg',
+                    name: '山地车爱好者',
+                    content: '发现了一条超棒的山地骑行路线，难度适中，风景优美，推荐给大家！',
+                    images: [
+                        '/static/images/mountain1.jpg'
+                    ],
+                    time: '5小时前',
+                    likes: 56,
+                    comments: 12,
+                    liked: true
+                }
+            ],
+            // 当前选中的标签页
+            activeTab: 'discover'
+        };
+    },
+    onLoad() {
+        // 页面加载时初始化数据
+        this.initData();
+    },
+    methods: {
+        // 初始化数据
+        initData() {
+            console.log('发现页面数据初始化', " at pages/index/discover.uvue:146");
+        },
+        // 导航到功能页面
+        navigateTo(page) {
+            console.log('导航到页面:', page, " at pages/index/discover.uvue:151");
+            // 这里可以实现具体页面跳转逻辑
+        },
+        // 点赞互动内容
+        likeItem(index) {
+            this.interactionList[index].liked = !this.interactionList[index].liked;
+            if (this.interactionList[index].liked) {
+                this.interactionList[index].likes++;
+            }
+            else {
+                this.interactionList[index].likes--;
+            }
+        },
+        // 评论互动内容
+        commentItem(index) {
+            console.log('评论内容:', index, " at pages/index/discover.uvue:167");
+            // 这里可以实现评论功能
+        },
+        // 预览图片
+        previewImage(images, current) {
+            uni.previewImage({
+                urls: images,
+                current: current
+            });
+        },
+        // 切换标签页
+        switchTab(tab) {
+            this.activeTab = tab;
+            console.log('切换到标签页:', tab, " at pages/index/discover.uvue:182");
+            if (tab === 'riding') {
+                // 跳转到骑行页面..
+                uni.switchTab({
+                    url: '/pages/index/index'
+                });
+            }
+            else if (tab === 'profile') {
+                // 跳转到我的页面
+                uni.switchTab({
+                    url: '/pages/index/my'
+                });
+            }
+        }
+    }
+});
+export default __sfc__;
+function GenPagesIndexDiscoverRender(this: InstanceType<typeof __sfc__>): any | null {
+    const _ctx = this;
+    const _cache = this.$.renderCache;
+    return _cE("view", _uM({ class: "container" }), [
+        _cE("view", _uM({ class: "banner-section" }), [
+            _cE("swiper", _uM({
+                class: "banner-swiper",
+                "indicator-dots": "",
+                autoplay: "",
+                circular: ""
+            }), [
+                _cE(Fragment, null, RenderHelpers.renderList(_ctx.bannerList, (item, index, __index, _cached): any => {
+                    return _cE("swiper-item", _uM({ key: index }), [
+                        _cE("image", _uM({
+                            class: "banner-image",
+                            src: item.image,
+                            mode: "aspectFill"
+                        }), null, 8 /* PROPS */, ["src"])
+                    ]);
+                }), 128 /* KEYED_FRAGMENT */)
+            ])
+        ]),
+        _cE("view", _uM({ class: "function-section" }), [
+            _cE("view", _uM({ class: "function-row" }), [
+                _cE("view", _uM({
+                    class: "function-item",
+                    onClick: () => { _ctx.navigateTo('ranking'); }
+                }), [
+                    _cE("image", _uM({
+                        class: "function-icon",
+                        src: "/static/icons/ranking.png"
+                    })),
+                    _cE("text", _uM({ class: "function-text" }), "好物排行")
+                ], 8 /* PROPS */, ["onClick"]),
+                _cE("view", _uM({
+                    class: "function-item",
+                    onClick: () => { _ctx.navigateTo('making'); }
+                }), [
+                    _cE("image", _uM({
+                        class: "function-icon",
+                        src: "/static/icons/making.png"
+                    })),
+                    _cE("text", _uM({ class: "function-text" }), "美图制作")
+                ], 8 /* PROPS */, ["onClick"]),
+                _cE("view", _uM({
+                    class: "function-item",
+                    onClick: () => { _ctx.navigateTo('tutorial'); }
+                }), [
+                    _cE("image", _uM({
+                        class: "function-icon",
+                        src: "/static/icons/tutorial.png"
+                    })),
+                    _cE("text", _uM({ class: "function-text" }), "教程分享")
+                ], 8 /* PROPS */, ["onClick"])
+            ]),
+            _cE("view", _uM({ class: "function-row" }), [
+                _cE("view", _uM({
+                    class: "function-item",
+                    onClick: () => { _ctx.navigateTo('local'); }
+                }), [
+                    _cE("image", _uM({
+                        class: "function-icon",
+                        src: "/static/icons/local.png"
+                    })),
+                    _cE("text", _uM({ class: "function-text" }), "本地排行")
+                ], 8 /* PROPS */, ["onClick"]),
+                _cE("view", _uM({
+                    class: "function-item",
+                    onClick: () => { _ctx.navigateTo('find-route'); }
+                }), [
+                    _cE("image", _uM({
+                        class: "function-icon",
+                        src: "/static/icons/find-route.png"
+                    })),
+                    _cE("text", _uM({ class: "function-text" }), "路书查找")
+                ], 8 /* PROPS */, ["onClick"]),
+                _cE("view", _uM({
+                    class: "function-item",
+                    onClick: () => { _ctx.navigateTo('make-route'); }
+                }), [
+                    _cE("image", _uM({
+                        class: "function-icon",
+                        src: "/static/icons/make-route.png"
+                    })),
+                    _cE("text", _uM({ class: "function-text" }), "路书制作")
+                ], 8 /* PROPS */, ["onClick"])
+            ])
+        ]),
+        _cE("view", _uM({ class: "interaction-section" }), [
+            _cE("text", _uM({ class: "section-title" }), "互动区域"),
+            _cE("view", _uM({ class: "interaction-list" }), [
+                _cE(Fragment, null, RenderHelpers.renderList(_ctx.interactionList, (item, index, __index, _cached): any => {
+                    return _cE("view", _uM({
+                        class: "interaction-item",
+                        key: index
+                    }), [
+                        _cE("view", _uM({ class: "user-info" }), [
+                            _cE("image", _uM({
+                                class: "user-avatar",
+                                src: item.avatar
+                            }), null, 8 /* PROPS */, ["src"]),
+                            _cE("text", _uM({ class: "user-name" }), _tD(item.name), 1 /* TEXT */)
+                        ]),
+                        _cE("text", _uM({ class: "interaction-content" }), _tD(item.content), 1 /* TEXT */),
+                        isTrue(item.images && item.images.length > 0)
+                            ? _cE("view", _uM({
+                                key: 0,
+                                class: "interaction-images"
+                            }), [
+                                _cE(Fragment, null, RenderHelpers.renderList(item.images, (img, imgIndex, __index, _cached): any => {
+                                    return _cE("image", _uM({
+                                        class: "interaction-image",
+                                        key: imgIndex,
+                                        src: img,
+                                        mode: "aspectFill",
+                                        onClick: () => { _ctx.previewImage(item.images, imgIndex); }
+                                    }), null, 8 /* PROPS */, ["src", "onClick"]);
+                                }), 128 /* KEYED_FRAGMENT */)
+                            ])
+                            : _cC("v-if", true),
+                        _cE("view", _uM({ class: "interaction-footer" }), [
+                            _cE("text", _uM({ class: "interaction-time" }), _tD(item.time), 1 /* TEXT */),
+                            _cE("view", _uM({ class: "interaction-actions" }), [
+                                _cE("view", _uM({
+                                    class: "action-item",
+                                    onClick: () => { _ctx.likeItem(index); }
+                                }), [
+                                    _cE("text", _uM({
+                                        class: _nC(["action-icon", _uM({ liked: item.liked })])
+                                    }), "❤️", 2 /* CLASS */),
+                                    _cE("text", _uM({ class: "action-count" }), _tD(item.likes), 1 /* TEXT */)
+                                ], 8 /* PROPS */, ["onClick"]),
+                                _cE("view", _uM({
+                                    class: "action-item",
+                                    onClick: () => { _ctx.commentItem(index); }
+                                }), [
+                                    _cE("text", _uM({ class: "action-icon" }), "💬"),
+                                    _cE("text", _uM({ class: "action-count" }), _tD(item.comments), 1 /* TEXT */)
+                                ], 8 /* PROPS */, ["onClick"])
+                            ])
+                        ])
+                    ]);
+                }), 128 /* KEYED_FRAGMENT */)
+            ])
+        ]),
+        _cE("view", _uM({ class: "tab-bar" }), [
+            _cE("view", _uM({
+                class: _nC(["tab-item", _uM({ active: _ctx.activeTab === 'riding' })]),
+                onClick: () => { _ctx.switchTab('riding'); }
+            }), [
+                _cE("text", _uM({ class: "tab-text" }), "骑行")
+            ], 10 /* CLASS, PROPS */, ["onClick"]),
+            _cE("view", _uM({
+                class: _nC(["tab-item", _uM({ active: _ctx.activeTab === 'discover' })]),
+                onClick: () => { _ctx.switchTab('discover'); }
+            }), [
+                _cE("text", _uM({ class: "tab-text" }), "发现")
+            ], 10 /* CLASS, PROPS */, ["onClick"]),
+            _cE("view", _uM({
+                class: _nC(["tab-item", _uM({ active: _ctx.activeTab === 'profile' })]),
+                onClick: () => { _ctx.switchTab('profile'); }
+            }), [
+                _cE("text", _uM({ class: "tab-text" }), "我的")
+            ], 10 /* CLASS, PROPS */, ["onClick"])
+        ])
+    ]);
+}
+const GenPagesIndexDiscoverStyles = [_uM([["container", _pS(_uM([["display", "flex"], ["flexDirection", "column"], ["paddingTop", 10], ["paddingRight", 10], ["paddingBottom", 60], ["paddingLeft", 10], ["backgroundColor", "#f5f5f5ff"]]))], ["banner-section", _pS(_uM([["height", 80], ["borderTopLeftRadius", 10], ["borderTopRightRadius", 10], ["borderBottomRightRadius", 10], ["borderBottomLeftRadius", 10], ["overflow", "hidden"], ["marginBottom", 10]]))], ["banner-swiper", _pS(_uM([["width", "100%"], ["height", "100%"]]))], ["banner-image", _pS(_uM([["width", "100%"], ["height", "100%"]]))], ["function-section", _pS(_uM([["backgroundColor", "#bcc4d6ff"], ["borderTopLeftRadius", 10], ["borderTopRightRadius", 10], ["borderBottomRightRadius", 10], ["borderBottomLeftRadius", 10], ["paddingTop", 10], ["paddingRight", 10], ["paddingBottom", 10], ["paddingLeft", 10], ["marginBottom", 10], ["boxShadow", "0 2px 5px rgba(0,0,0,0.1)"], ["height", 130], ["overflow", "visible"]]))], ["function-row", _pS(_uM([["display", "flex"], ["flex", 1], ["flexDirection", "row"], ["justifyContent", "space-between"], ["marginBottom", 10], ["width", "100%"], ["height", 50], ["position", "relative"], ["flexWrap", "nowrap"], ["marginBottom:last-child", 0]]))], ["function-item", _pS(_uM([["flex", "0 0 auto"], ["display", "flex"], ["alignItems", "center"], ["paddingTop", 5], ["paddingRight", 0], ["paddingBottom", 5], ["paddingLeft", 0], ["boxSizing", "border-box"], ["backgroundColor", "#f1f2f5ff"], ["borderTopLeftRadius", 5], ["borderTopRightRadius", 5], ["borderBottomRightRadius", 5], ["borderBottomLeftRadius", 5], ["justifyContent", "center"], ["height", "100%"], ["position", "relative"], ["zIndex", 1], ["overflow", "visible"], ["backgroundColor:active", "#f5f5f5"]]))], ["function-icon", _pS(_uM([["width", 20], ["height", 20], ["marginBottom", 5]]))], ["function-text", _pS(_uM([["fontSize", 12], ["color", "#333333"], ["whiteSpace", "nowrap"], ["overflow", "hidden"], ["textOverflow", "ellipsis"], ["textAlign", "center"]]))], ["interaction-section", _pS(_uM([["flex", 1], ["backgroundColor", "#ffffff"], ["borderTopLeftRadius", 10], ["borderTopRightRadius", 10], ["borderBottomRightRadius", 10], ["borderBottomLeftRadius", 10], ["paddingTop", 15], ["paddingRight", 15], ["paddingBottom", 15], ["paddingLeft", 15], ["marginBottom", 10], ["boxShadow", "0 2px 5px rgba(0,0,0,0.1)"], ["display", "flex"], ["flexDirection", "column"]]))], ["section-title", _pS(_uM([["fontSize", 18], ["fontWeight", "bold"], ["marginBottom", 10], ["color", "#333333"]]))], ["interaction-list", _pS(_uM([["flex", 1], ["overflowY", "auto"]]))], ["interaction-item", _pS(_uM([["paddingTop", 15], ["paddingRight", 0], ["paddingBottom", 15], ["paddingLeft", 0], ["borderBottomWidth", 1], ["borderBottomStyle", "solid"], ["borderBottomColor", "#eeeeee"], ["borderBottomWidth:last-child", "medium"], ["borderBottomStyle:last-child", "none"], ["borderBottomColor:last-child", "#000000"]]))], ["user-info", _pS(_uM([["display", "flex"], ["alignItems", "center"], ["marginBottom", 10]]))], ["user-avatar", _pS(_uM([["width", 40], ["height", 40], ["marginRight", 10]]))], ["user-name", _pS(_uM([["fontSize", 16], ["fontWeight", "bold"], ["color", "#333333"]]))], ["interaction-content", _pS(_uM([["fontSize", 16], ["color", "#333333"], ["marginBottom", 10], ["lineHeight", 1.5]]))], ["interaction-images", _pS(_uM([["display", "flex"], ["flexWrap", "wrap"], ["marginBottom", 10]]))], ["interaction-image", _pS(_uM([["width", 100], ["height", 100], ["marginRight", 5], ["marginBottom", 5], ["borderTopLeftRadius", 5], ["borderTopRightRadius", 5], ["borderBottomRightRadius", 5], ["borderBottomLeftRadius", 5]]))], ["interaction-footer", _pS(_uM([["display", "flex"], ["justifyContent", "space-between"], ["alignItems", "center"]]))], ["interaction-time", _pS(_uM([["fontSize", 12], ["color", "#999999"]]))], ["interaction-actions", _pS(_uM([["display", "flex"]]))], ["action-item", _pS(_uM([["display", "flex"], ["alignItems", "center"], ["marginLeft", 15]]))], ["action-icon", _uM([["", _uM([["fontSize", 16], ["marginRight", 5]])], [".liked", _uM([["color", "#FF5722"]])]])], ["action-count", _pS(_uM([["fontSize", 12], ["color", "#666666"]]))], ["tab-bar", _pS(_uM([["position", "fixed"], ["bottom", 0], ["left", 0], ["right", 0], ["height", 50], ["backgroundColor", "#ffffff"], ["display", "flex"], ["flexDirection", "row"], ["justifyContent", "space-between"], ["alignItems", "center"], ["boxShadow", "0 -2px 5px rgba(0,0,0,0.1)"], ["zIndex", 100]]))], ["tab-item", _uM([["", _uM([["flex", 1], ["height", "100%"], ["display", "flex"], ["justifyContent", "center"], ["alignItems", "center"], ["textAlign", "center"]])], [".active", _uM([["borderBottomWidth", 2], ["borderBottomStyle", "solid"], ["borderBottomColor", "#FF5722"]])]])], ["tab-text", _uM([["", _uM([["fontSize", 16], ["color", "#666666"]])], [".tab-item.active ", _uM([["color", "#FF5722"], ["fontWeight", "bold"]])]])]])];
+//# sourceMappingURL=discover.uvue.map

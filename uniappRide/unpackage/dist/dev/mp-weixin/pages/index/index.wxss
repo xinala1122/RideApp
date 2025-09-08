@@ -1,0 +1,179 @@
+@import "../../uvue.wxss";
+:host{display:flex;flex-direction:column}
+
+.container {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		padding: 10px;
+		padding-bottom: 60px; /* 为底部导航栏留出空间 */
+		background-color: #f5f5f5;
+}
+
+	/* 顶部数据区域样式 */
+.data-section {
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 10px; /* 减小内边距 */
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		height: 200px; /* 固定高度，减小一半左右 */
+}
+.section-title {
+		font-size: 16px; /* 减小字体大小 */
+		font-weight: bold;
+		margin-bottom: 5px; /* 减小下边距 */
+		color: #333;
+}
+.data-list {
+		background-color: #f9f9f9;
+		border-radius: 8px;
+		overflow: hidden;
+		height: calc(100% - 25px); /* 计算剩余高度 */
+}
+.data-list-item {
+		display: flex;
+		justify-content: space-between;
+		padding: 8px 10px; /* 减小内边距 */
+		border-bottom: 1px solid #eee;
+}
+.data-list-item:last-child {
+		border-bottom: none;
+}
+.data-list-label {
+		font-size: 14px; /* 减小字体大小 */
+		color: #666;
+}
+.data-list-value {
+		font-size: 14px; /* 减小字体大小 */
+		font-weight: bold;
+		color: #333;
+}
+	/* 中间地图区域样式 */
+.map-section {
+		flex: 1;
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		display: flex;
+		flex-direction: column;
+		min-height: 250px; /* 设置最小高度 */
+}
+.map-container {
+		flex: 1;
+		background-color: #e0e0e0;
+		border-radius: 5px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+}
+	
+	/* 底部按钮区域样式 */
+.button-section {
+		height: 200px;
+		background-color: #ffffff;
+		border-radius: 10px;
+		padding: 15px;
+		margin-bottom: 10px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.button-grid {
+		position: relative;
+		width: 100%;
+		height: 100%;
+}
+.button-corner {
+		position: absolute;
+		width: 80px;
+		height: 80px;
+		background-color: #4CAF50;
+		border-radius: 10px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+}
+.top-left {
+		top: 0;
+		left: 0;
+}
+.top-right {
+		top: 0;
+		right: 0;
+}
+.bottom-left {
+		bottom: 0;
+		left: 0;
+}
+.bottom-right {
+		bottom: 0;
+		right: 0;
+}
+.button-center {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 100px;
+		height: 100px;
+		background-color: #FF5722;
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.button-text {
+		color: white;
+		font-size: 12px;
+		text-align: center;
+}
+.button-text-large {
+		color: white;
+		font-size: 16px;
+		font-weight: bold;
+		text-align: center;
+}
+	/* 自由骑按钮样式 - 使用原来的开始骑行按钮颜色 */
+.free-ride {
+		background-color: #FF5722;
+}
+	
+	/* 开始骑行按钮样式 - 使用原来的自由骑按钮颜色 */
+.start-riding {
+		background-color: #20e95cff;
+}
+.tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background-color: #ffffff;
+    display: flex;
+	flex-direction: row; /* 明确指定为行布局 */
+    justify-content: space-between; /* 左中右布局 */
+    align-items: center; /* 垂直居中 */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+.tab-item {
+    flex: 1; /* 每个项目占据相等的空间 */
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center; /* 文本居中 */
+}
+.tab-item.active {
+		border-bottom: 2px solid #FF5722;
+}
+.tab-text {
+		font-size: 16px;
+		color: #666;
+}
+.tab-item.active .tab-text {
+		color: #FF5722;
+		font-weight: bold;
+}
