@@ -145,6 +145,15 @@ const _sfc_main = common_vendor.defineComponent({
         }
       }));
     },
+    // 判断数组中是否包含某个元素
+    inArray(arr = null, key = null, val = null) {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i][key] === val) {
+          return i;
+        }
+      }
+      return -1;
+    },
     // 搜索设备
     searchDevices() {
       if (!this.bluetoothEnabled) {
@@ -155,31 +164,34 @@ const _sfc_main = common_vendor.defineComponent({
         return null;
       }
       if (this.isSearching) {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:263", "正在搜索中，请稍候...");
+        common_vendor.index.__f__("log", "at pages/index/my.uvue:271", "正在搜索中，请稍候...");
         return null;
       }
-      common_vendor.index.__f__("log", "at pages/index/my.uvue:267", "开始搜索蓝牙设备");
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:275", "开始搜索蓝牙设备");
       this.isSearching = true;
       this.deviceStatus = "搜索中...";
       this.discoveredDevices = [];
       common_vendor.index.openBluetoothAdapter({
         success: (res = null) => {
-          common_vendor.index.__f__("log", "at pages/index/my.uvue:276", "蓝牙适配器已打开", res);
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:284", "蓝牙适配器已打开", res);
           common_vendor.index.startBluetoothDevicesDiscovery({
             allowDuplicatesKey: true,
             success: (res2 = null) => {
-              common_vendor.index.__f__("log", "at pages/index/my.uvue:282", "开始搜索设备", res2);
+              common_vendor.index.__f__("log", "at pages/index/my.uvue:290", "开始搜索设备", res2);
               common_vendor.index.onBluetoothDeviceFound((res3 = null) => {
-                common_vendor.index.__f__("log", "at pages/index/my.uvue:286", "发现新设备", res3);
                 res3.devices.forEach((device = null) => {
                   if (!device.name && !device.localName) {
                     return null;
                   }
+                  common_vendor.index.__f__("log", "at pages/index/my.uvue:300", "发现新设备1111", device.name);
                   const foundDevices = this.discoveredDevices;
                   const idx = this.inArray(foundDevices, "deviceId", device.deviceId);
+                  common_vendor.index.__f__("log", "at pages/index/my.uvue:303", "发现新设备inArray", idx);
                   new UTSJSONObject({});
                   if (idx === -1) {
                     if (device.name && device.name.includes("AINSTEC_")) {
+                      common_vendor.index.__f__("log", "at pages/index/my.uvue:308", "发现新设备oooo", res3);
+                      common_vendor.index.__f__("log", "at pages/index/my.uvue:309", "发现新设备oooo", device.name);
                       this.discoveredDevices.push({
                         deviceId: device.deviceId,
                         name: device.name,
@@ -188,227 +200,220 @@ const _sfc_main = common_vendor.defineComponent({
                       });
                     }
                   } else {
+                    common_vendor.index.__f__("log", "at pages/index/my.uvue:318", "发现新设备pppp", res3);
+                    common_vendor.index.__f__("log", "at pages/index/my.uvue:319", "发现新设备pppp", device.name);
                     this.discoveredDevices[idx] = Object.assign(Object.assign({}, this.discoveredDevices[idx]), { RSSI: device.RSSI, name: device.name || this.discoveredDevices[idx].name });
                   }
                 });
               });
             },
             fail: (err = null) => {
-              common_vendor.index.__f__("error", "at pages/index/my.uvue:316", "搜索设备失败", err);
+              common_vendor.index.__f__("error", "at pages/index/my.uvue:331", "搜索设备失败", err);
               this.isSearching = false;
               this.deviceStatus = "搜索失败";
             }
           });
           setTimeout(() => {
             this.stopSearchDevices();
-          }, 1e4);
+          }, 3e3);
         },
         fail: (err = null) => {
-          common_vendor.index.__f__("error", "at pages/index/my.uvue:328", "打开蓝牙适配器失败", err);
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:343", "打开蓝牙适配器失败", err);
           this.isSearching = false;
           this.deviceStatus = "蓝牙开启失败";
         }
       });
-    }
-  },
-  // 停止搜索设备
-  stopSearchDevices() {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:343", "停止搜索蓝牙设备");
-    common_vendor.index.stopBluetoothDevicesDiscovery(new UTSJSONObject({
-      success: (res = null) => {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:346", "停止搜索设备成功", res);
-        this.isSearching = false;
-        if (this.discoveredDevices.length === 0) {
-          this.deviceStatus = "未找到设备";
-        } else {
-          this.deviceStatus = "找到 " + this.discoveredDevices.length + " 个设备";
+    },
+    // 停止搜索设备
+    stopSearchDevices() {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:352", "停止搜索蓝牙设备");
+      common_vendor.index.stopBluetoothDevicesDiscovery(new UTSJSONObject({
+        success: (res = null) => {
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:355", "停止搜索设备成功", res);
+          this.isSearching = false;
+          if (this.discoveredDevices.length === 0) {
+            this.deviceStatus = "未找到设备";
+          } else {
+            this.deviceStatus = "找到 " + this.discoveredDevices.length + " 个设备";
+          }
+        },
+        fail: (err = null) => {
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:364", "停止搜索设备失败", err);
+          this.isSearching = false;
         }
-      },
-      fail: (err = null) => {
-        common_vendor.index.__f__("error", "at pages/index/my.uvue:355", "停止搜索设备失败", err);
-        this.isSearching = false;
+      }));
+    },
+    // 连接设备
+    connectDevice(device = null) {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:373", "连接设备", device);
+      if (!this.bluetoothEnabled) {
+        common_vendor.index.showToast({
+          title: "请先开启蓝牙",
+          icon: "none"
+        });
+        return null;
       }
-    }));
-  },
-  // 连接设备
-  connectDevice(device = null) {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:364", "连接设备", device);
-    if (!this.bluetoothEnabled) {
-      common_vendor.index.showToast({
-        title: "请先开启蓝牙",
-        icon: "none"
+      this.deviceStatus = "连接中...";
+      common_vendor.index.createBLEConnection(new UTSJSONObject({
+        deviceId: device.deviceId,
+        success: (res = null) => {
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:388", "连接设备成功", res);
+          device.connected = true;
+          this.connectedDeviceId = device.deviceId;
+          this.deviceName = device.name || "未知设备";
+          this.deviceStatus = "已连接";
+          this.stopSearchDevices();
+          this.getBLEDeviceServices(device.deviceId);
+          common_vendor.index.showToast({
+            title: "连接成功",
+            icon: "success"
+          });
+        },
+        fail: (err = null) => {
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:408", "连接设备失败", err);
+          this.deviceStatus = "连接失败";
+          common_vendor.index.showToast({
+            title: "连接失败",
+            icon: "none"
+          });
+        }
+      }));
+    },
+    // 断开设备连接
+    disconnectDevice(device = null) {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:421", "断开设备连接", device);
+      common_vendor.index.closeBLEConnection(new UTSJSONObject({
+        deviceId: device.deviceId,
+        success: (res = null) => {
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:427", "断开设备连接成功", res);
+          device.connected = false;
+          if (this.connectedDeviceId === device.deviceId) {
+            this.connectedDeviceId = "";
+            this.deviceName = "智能骑行传感器 A1";
+            this.deviceStatus = "已断开";
+          }
+          common_vendor.index.showToast({
+            title: "已断开连接",
+            icon: "success"
+          });
+        },
+        fail: (err = null) => {
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:443", "断开设备连接失败", err);
+          common_vendor.index.showToast({
+            title: "断开失败",
+            icon: "none"
+          });
+        }
+      }));
+    },
+    // 断开所有设备连接
+    disconnectAllDevices() {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:455", "断开所有设备连接");
+      this.discoveredDevices.forEach((device) => {
+        if (device.connected) {
+          this.disconnectDevice(device);
+        }
       });
-      return null;
-    }
-    this.deviceStatus = "连接中...";
-    common_vendor.index.createBLEConnection(new UTSJSONObject({
-      deviceId: device.deviceId,
-      success: (res = null) => {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:379", "连接设备成功", res);
-        device.connected = true;
-        this.connectedDeviceId = device.deviceId;
-        this.deviceName = device.name || "未知设备";
-        this.deviceStatus = "已连接";
-        this.stopSearchDevices();
-        this.getBLEDeviceServices(device.deviceId);
-        common_vendor.index.showToast({
-          title: "连接成功",
-          icon: "success"
-        });
-      },
-      fail: (err = null) => {
-        common_vendor.index.__f__("error", "at pages/index/my.uvue:399", "连接设备失败", err);
-        this.deviceStatus = "连接失败";
-        common_vendor.index.showToast({
-          title: "连接失败",
-          icon: "none"
-        });
-      }
-    }));
-  },
-  // 断开设备连接
-  disconnectDevice(device = null) {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:412", "断开设备连接", device);
-    common_vendor.index.closeBLEConnection(new UTSJSONObject({
-      deviceId: device.deviceId,
-      success: (res = null) => {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:418", "断开设备连接成功", res);
-        device.connected = false;
-        if (this.connectedDeviceId === device.deviceId) {
-          this.connectedDeviceId = "";
-          this.deviceName = "智能骑行传感器 A1";
-          this.deviceStatus = "已断开";
-        }
-        common_vendor.index.showToast({
-          title: "已断开连接",
-          icon: "success"
-        });
-      },
-      fail: (err = null) => {
-        common_vendor.index.__f__("error", "at pages/index/my.uvue:434", "断开设备连接失败", err);
-        common_vendor.index.showToast({
-          title: "断开失败",
-          icon: "none"
-        });
-      }
-    }));
-  },
-  // 断开所有设备连接
-  disconnectAllDevices() {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:446", "断开所有设备连接");
-    this.discoveredDevices.forEach((device) => {
+    },
+    // 移除设备
+    removeDevice(device = null) {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:467", "移除设备", device);
       if (device.connected) {
         this.disconnectDevice(device);
       }
-    });
-  },
-  // 移除设备
-  removeDevice(device = null) {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:458", "移除设备", device);
-    if (device.connected) {
-      this.disconnectDevice(device);
-    }
-    const index = this.discoveredDevices.findIndex((d) => {
-      return d.deviceId === device.deviceId;
-    });
-    if (index !== -1) {
-      this.discoveredDevices.splice(index, 1);
-    }
-    if (this.connectedDeviceId === device.deviceId) {
-      this.connectedDeviceId = "";
-      this.deviceName = "智能骑行传感器 A1";
-      this.deviceStatus = "已移除";
-    }
-    common_vendor.index.showToast({
-      title: "已移除设备",
-      icon: "success"
-    });
-  },
-  // 获取蓝牙设备服务
-  getBLEDeviceServices(deviceId = null) {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:486", "获取设备服务", deviceId);
-    common_vendor.index.getBLEDeviceServices(new UTSJSONObject({
-      deviceId,
-      success: (res = null) => {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:491", "获取设备服务成功", res);
-        res.services.forEach((service = null) => {
-          common_vendor.index.__f__("log", "at pages/index/my.uvue:495", "服务UUID:", service.uuid);
-          this.getBLEDeviceCharacteristics(deviceId, service.uuid);
-        });
-      },
-      fail: (err = null) => {
-        common_vendor.index.__f__("error", "at pages/index/my.uvue:502", "获取设备服务失败", err);
-      }
-    }));
-  },
-  // 获取蓝牙设备特征值
-  getBLEDeviceCharacteristics(deviceId = null, serviceId = null) {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:509", "获取设备特征值", deviceId, serviceId);
-    common_vendor.index.getBLEDeviceCharacteristics(new UTSJSONObject({
-      deviceId,
-      serviceId,
-      success: (res = null) => {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:515", "获取设备特征值成功", res);
-        res.characteristics.forEach((characteristic = null) => {
-          common_vendor.index.__f__("log", "at pages/index/my.uvue:519", "特征值UUID:", characteristic.uuid);
-          if (characteristic.properties.notify || characteristic.properties.indicate) {
-            this.notifyBLECharacteristicValueChange(deviceId, serviceId, characteristic.uuid);
-          }
-        });
-      },
-      fail: (err = null) => {
-        common_vendor.index.__f__("error", "at pages/index/my.uvue:528", "获取设备特征值失败", err);
-      }
-    }));
-  },
-  // 启用蓝牙设备特征值变化通知
-  notifyBLECharacteristicValueChange(deviceId = null, serviceId = null, characteristicId = null) {
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:535", "启用蓝牙设备特征值变化通知", deviceId, serviceId, characteristicId);
-    common_vendor.index.notifyBLECharacteristicValueChange(new UTSJSONObject({
-      deviceId,
-      serviceId,
-      characteristicId,
-      state: true,
-      success: (res = null) => {
-        common_vendor.index.__f__("log", "at pages/index/my.uvue:543", "启用蓝牙设备特征值变化通知成功", res);
-        common_vendor.index.onBLECharacteristicValueChange((res2 = null) => {
-          common_vendor.index.__f__("log", "at pages/index/my.uvue:547", "特征值变化", res2);
-        });
-      },
-      fail: (err = null) => {
-        common_vendor.index.__f__("error", "at pages/index/my.uvue:553", "启用蓝牙设备特征值变化通知失败", err);
-      }
-    }));
-  },
-  // 处理接收到的数据
-  handleReceivedData(buffer = null) {
-    const str = this.ab2hex(buffer);
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:562", "接收到的数据:", str);
-  },
-  // 在数组中查找特定值的索引
-  inArray(arr = null, key = null, val = null) {
-    for (let i = 0; i < arr.length; i++) {
-      if (arr[i][key] === val) {
-        return i;
-      }
-    }
-    return -1;
-  },
-  // ArrayBuffer转16进制字符串
-  ab2hex(buffer = null) {
-    const hexArr = Array.prototype.map.call(new Uint8Array(buffer), function(bit = null) {
-      return ("00" + bit.toString(16)).slice(-2);
-    });
-    return hexArr.join("");
-  },
-  // 切换标签页
-  switchTab(tab = null) {
-    this.activeTab = tab;
-    common_vendor.index.__f__("log", "at pages/index/my.uvue:592", "切换到标签页:", tab);
-    if (tab === "riding") {
-      common_vendor.index.switchTab({
-        url: "/pages/index/index"
+      const index = this.discoveredDevices.findIndex((d) => {
+        return d.deviceId === device.deviceId;
       });
+      if (index !== -1) {
+        this.discoveredDevices.splice(index, 1);
+      }
+      if (this.connectedDeviceId === device.deviceId) {
+        this.connectedDeviceId = "";
+        this.deviceName = "智能骑行传感器 A1";
+        this.deviceStatus = "已移除";
+      }
+      common_vendor.index.showToast({
+        title: "已移除设备",
+        icon: "success"
+      });
+    },
+    // 获取蓝牙设备服务
+    getBLEDeviceServices(deviceId = null) {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:495", "获取设备服务", deviceId);
+      common_vendor.index.getBLEDeviceServices(new UTSJSONObject({
+        deviceId,
+        success: (res = null) => {
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:500", "获取设备服务成功", res);
+          res.services.forEach((service = null) => {
+            common_vendor.index.__f__("log", "at pages/index/my.uvue:504", "服务UUID:", service.uuid);
+            this.getBLEDeviceCharacteristics(deviceId, service.uuid);
+          });
+        },
+        fail: (err = null) => {
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:511", "获取设备服务失败", err);
+        }
+      }));
+    },
+    // 获取蓝牙设备特征值
+    getBLEDeviceCharacteristics(deviceId = null, serviceId = null) {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:518", "获取设备特征值", deviceId, serviceId);
+      common_vendor.index.getBLEDeviceCharacteristics(new UTSJSONObject({
+        deviceId,
+        serviceId,
+        success: (res = null) => {
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:524", "获取设备特征值成功", res);
+          res.characteristics.forEach((characteristic = null) => {
+            common_vendor.index.__f__("log", "at pages/index/my.uvue:528", "特征值UUID:", characteristic.uuid);
+            if (characteristic.properties.notify || characteristic.properties.indicate) {
+              this.notifyBLECharacteristicValueChange(deviceId, serviceId, characteristic.uuid);
+            }
+          });
+        },
+        fail: (err = null) => {
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:537", "获取设备特征值失败", err);
+        }
+      }));
+    },
+    // 启用蓝牙设备特征值变化通知
+    notifyBLECharacteristicValueChange(deviceId = null, serviceId = null, characteristicId = null) {
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:544", "启用蓝牙设备特征值变化通知", deviceId, serviceId, characteristicId);
+      common_vendor.index.notifyBLECharacteristicValueChange(new UTSJSONObject({
+        deviceId,
+        serviceId,
+        characteristicId,
+        state: true,
+        success: (res = null) => {
+          common_vendor.index.__f__("log", "at pages/index/my.uvue:552", "启用蓝牙设备特征值变化通知成功", res);
+          common_vendor.index.onBLECharacteristicValueChange((res2 = null) => {
+            common_vendor.index.__f__("log", "at pages/index/my.uvue:556", "特征值变化", res2);
+          });
+        },
+        fail: (err = null) => {
+          common_vendor.index.__f__("error", "at pages/index/my.uvue:562", "启用蓝牙设备特征值变化通知失败", err);
+        }
+      }));
+    },
+    // 处理接收到的数据
+    handleReceivedData(buffer = null) {
+      const str = this.ab2hex(buffer);
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:571", "接收到的数据:", str);
+    },
+    // ArrayBuffer转16进制字符串
+    ab2hex(buffer = null) {
+      const hexArr = Array.prototype.map.call(new Uint8Array(buffer), function(bit = null) {
+        return ("00" + bit.toString(16)).slice(-2);
+      });
+      return hexArr.join("");
+    },
+    // 切换标签页
+    switchTab(tab = null) {
+      this.activeTab = tab;
+      common_vendor.index.__f__("log", "at pages/index/my.uvue:592", "切换到标签页:", tab);
+      if (tab === "riding") {
+        common_vendor.index.switchTab({
+          url: "/pages/index/index"
+        });
+      }
     }
   }
 });
@@ -438,20 +443,20 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         b: common_vendor.t(device.RSSI),
         c: device.connected
       }, device.connected ? {
-        d: common_vendor.o(($event) => _ctx.disconnectDevice(device), index)
+        d: common_vendor.o(($event) => $options.disconnectDevice(device), index)
       } : {}, {
-        e: common_vendor.o(($event) => _ctx.removeDevice(device), index),
+        e: common_vendor.o(($event) => $options.removeDevice(device), index),
         f: index,
-        g: common_vendor.o(($event) => _ctx.connectDevice(device), index)
+        g: common_vendor.o(($event) => $options.connectDevice(device), index)
       });
     })
   } : {}, {
     k: $data.activeTab === "riding" ? 1 : "",
-    l: common_vendor.o(($event) => _ctx.switchTab("riding")),
+    l: common_vendor.o(($event) => $options.switchTab("riding")),
     m: $data.activeTab === "history" ? 1 : "",
-    n: common_vendor.o(($event) => _ctx.switchTab("history")),
+    n: common_vendor.o(($event) => $options.switchTab("history")),
     o: $data.activeTab === "profile" ? 1 : "",
-    p: common_vendor.o(($event) => _ctx.switchTab("profile")),
+    p: common_vendor.o(($event) => $options.switchTab("profile")),
     q: common_vendor.sei(common_vendor.gei(_ctx, ""), "view")
   });
 }
