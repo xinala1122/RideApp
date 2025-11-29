@@ -4,6 +4,7 @@
     "pages/index/discover",
     "pages/index/my"
   ],
+  "usingComponents": {},
   "window": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "uni-app x",
@@ -30,5 +31,9 @@
       }
     ]
   },
-  "usingComponents": {}
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于显示您的当前位置并提供骑行导航服务"
+    }
+  }
 }

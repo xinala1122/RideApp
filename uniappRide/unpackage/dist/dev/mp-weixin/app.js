@@ -6,7 +6,7 @@ if (!Math) {
   "./pages/index/discover.js";
   "./pages/index/my.js";
 }
-const _sfc_main = common_vendor.defineComponent(new UTSJSONObject({
+const _sfc_main = common_vendor.defineComponent({
   onLaunch: function() {
     common_vendor.index.__f__("log", "at App.uvue:7", "App Launch");
   },
@@ -19,7 +19,7 @@ const _sfc_main = common_vendor.defineComponent(new UTSJSONObject({
   onExit: function() {
     common_vendor.index.__f__("log", "at App.uvue:34", "App Exit");
   }
-}));
+});
 function createApp() {
   const app = common_vendor.createSSRApp(_sfc_main);
   return {

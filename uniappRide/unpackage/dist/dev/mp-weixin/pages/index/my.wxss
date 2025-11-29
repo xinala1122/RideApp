@@ -6,8 +6,6 @@
 		flex-direction: column;
 		height: 100vh;
 		padding: 10px;
-		padding-bottom: 60px;
-		/* 为底部导航栏留出空间 */
 		background-color: #f5f5f5;
 }
 
@@ -105,12 +103,52 @@
 }
 
 	/* 底部设备区域样式 */
-.device-section {
-		background-color: #ffffff;
-		border-radius: 10px;
-		padding: 15px;
-		margin-bottom: 10px;
-		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+.device-area {
+			background-color: #ffffff;
+			border-radius: 10px;
+			padding: 15px;
+			margin-bottom: 10px;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+		
+		/* 设备信息显示区域样式 */
+.device-info-section {
+			background-color: #f8f8f8;
+			border-radius: 8px;
+			padding: 10px;
+			margin: 10px 0;
+			border: 1px solid #e0e0e0;
+}
+.device-info-item {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 8px 0;
+			border-bottom: 1px solid #f0f0f0;
+}
+.device-info-item:last-child {
+			border-bottom: none;
+}
+.device-info-label {
+			font-size: 14px;
+			color: #666666;
+}
+.device-info-value {
+			font-size: 14px;
+			color: #333333;
+			font-weight: 500;
+}
+.device-info-value.battery {
+				color: #07c160;
+				font-weight: bold;
+}
+.device-info-value.connected {
+				color: #07c160;
+				font-weight: bold;
+}
+.device-info-value.disconnected {
+				color: #ff4d4f;
+				font-weight: bold;
 }
 .device-container {
 		display: flex;
@@ -192,58 +230,4 @@
 
 
 
-	/* 底部导航栏样式 */
-.tab-bar {
-		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		height: 50px;
-		background-color: #ffffff;
-		display: flex;
-		flex-direction: row;
-		/* 明确指定为行布局 */
-		justify-content: space-between;
-		/* 左中右布局 */
-		align-items: center;
-		/* 垂直居中 */
-		box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-		z-index: 100;
-}
-.tab-item {
-		flex: 1;
-		/* 每个项目占据相等的空间 */
-		height: 100%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		text-align: center;
-		/* 文本居中 */
-}
-.tab-item:first-child {
-		justify-content: flex-start;
-		/* 第一个项目左对齐 */
-		padding-left: 20px;
-		/* 左边添加一些内边距 */
-}
-.tab-item:last-child {
-		justify-content: flex-end;
-		/* 最后一个项目右对齐 */
-		padding-right: 20px;
-		/* 右边添加一些内边距 */
-}
-.tab-item:nth-child(2) {
-		justify-content: center;
-		/* 中间项目居中 */
-}
-.tab-item.active {
-		border-bottom: 2px solid #FF5722;
-}
-.tab-text {
-		font-size: 16px;
-		color: #666;
-}
-.tab-item.active .tab-text {
-		color: #FF5722;
-		font-weight: bold;
-}
+

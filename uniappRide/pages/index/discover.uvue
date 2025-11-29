@@ -80,18 +80,7 @@
 			</view>
 		</view>
 		
-		<!-- 底部导航栏 -->
-		<view class="tab-bar">
-			<view class="tab-item" :class="{ active: activeTab === 'riding' }" @click="switchTab('riding')">
-				<text class="tab-text">骑行</text>
-			</view>
-			<view class="tab-item" :class="{ active: activeTab === 'discover' }" @click="switchTab('discover')">
-				<text class="tab-text">发现</text>
-			</view>
-			<view class="tab-item" :class="{ active: activeTab === 'profile' }" @click="switchTab('profile')">
-				<text class="tab-text">我的</text>
-			</view>
-		</view>
+
 	</view>
 </template>
 <script>
@@ -132,8 +121,7 @@
 						liked: true
 					}
 				],
-				// 当前选中的标签页
-				activeTab: 'discover'
+				//
 			}
 		},
 		onLoad() {
@@ -176,22 +164,7 @@
 				});
 			},
 			
-			// 切换标签页
-			switchTab(tab) {
-				this.activeTab = tab;
-				console.log('切换到标签页:', tab);
-				if(tab === 'riding') {
-					// 跳转到骑行页面..
-					uni.switchTab({
-						url: '/pages/index/index'
-					});
-				} else if(tab === 'profile') {
-					// 跳转到我的页面
-					uni.switchTab({
-						url: '/pages/index/my'
-					});
-				}
-			}
+
 		}
 	}
 </script>
@@ -201,7 +174,6 @@
 		flex-direction: column;
 		height: 100vh;
 		padding: 10px;
-		padding-bottom: 60px; /* 为底部导航栏留出空间 */
 		background-color: #f5f5f5ff;
 	}
 
@@ -398,42 +370,5 @@
 		color: #666;
 	}
 	
-	/* 底部导航栏样式 */
-	.tab-bar {
-		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		height: 50px;
-		background-color: #ffffff;
-		display: flex;
-		flex-direction: row; /* 明确指定为行布局 */
-		justify-content: space-between; /* 左中右布局 */
-		align-items: center; /* 垂直居中 */
-		box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-		z-index: 100;
-	}
-	
-	.tab-item {
-		flex: 1; /* 每个项目占据相等的空间 */
-		height: 100%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		text-align: center; /* 文本居中 */
-	}
-	
-	.tab-item.active {
-		border-bottom: 2px solid #FF5722;
-	}
-	
-	.tab-text {
-		font-size: 16px;
-		color: #666;
-	}
-	
-	.tab-item.active .tab-text {
-		color: #FF5722;
-		font-weight: bold;
-	}
+
 </style>

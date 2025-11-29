@@ -37,9 +37,8 @@ const _sfc_main = common_vendor.defineComponent({
           comments: 12,
           liked: true
         })
-      ],
-      // 当前选中的标签页
-      activeTab: "discover"
+      ]
+      //
     };
   },
   onLoad() {
@@ -48,11 +47,11 @@ const _sfc_main = common_vendor.defineComponent({
   methods: {
     // 初始化数据
     initData() {
-      common_vendor.index.__f__("log", "at pages/index/discover.uvue:146", "发现页面数据初始化");
+      common_vendor.index.__f__("log", "at pages/index/discover.uvue:134", "发现页面数据初始化");
     },
     // 导航到功能页面
     navigateTo(page = null) {
-      common_vendor.index.__f__("log", "at pages/index/discover.uvue:151", "导航到页面:", page);
+      common_vendor.index.__f__("log", "at pages/index/discover.uvue:139", "导航到页面:", page);
     },
     // 点赞互动内容
     likeItem(index = null) {
@@ -65,7 +64,7 @@ const _sfc_main = common_vendor.defineComponent({
     },
     // 评论互动内容
     commentItem(index = null) {
-      common_vendor.index.__f__("log", "at pages/index/discover.uvue:167", "评论内容:", index);
+      common_vendor.index.__f__("log", "at pages/index/discover.uvue:155", "评论内容:", index);
     },
     // 预览图片
     previewImage(images = null, current = null) {
@@ -73,24 +72,11 @@ const _sfc_main = common_vendor.defineComponent({
         urls: images,
         current
       });
-    },
-    // 切换标签页
-    switchTab(tab = null) {
-      this.activeTab = tab;
-      common_vendor.index.__f__("log", "at pages/index/discover.uvue:182", "切换到标签页:", tab);
-      if (tab === "riding") {
-        common_vendor.index.switchTab({
-          url: "/pages/index/index"
-        });
-      } else if (tab === "profile") {
-        common_vendor.index.switchTab({
-          url: "/pages/index/my"
-        });
-      }
     }
   }
 });
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
+  "raw js";
   return {
     a: common_vendor.f($data.bannerList, (item, index, i0) => {
       return {
@@ -134,13 +120,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         l: index
       });
     }),
-    o: $data.activeTab === "riding" ? 1 : "",
-    p: common_vendor.o(($event) => $options.switchTab("riding")),
-    q: $data.activeTab === "discover" ? 1 : "",
-    r: common_vendor.o(($event) => $options.switchTab("discover")),
-    s: $data.activeTab === "profile" ? 1 : "",
-    t: common_vendor.o(($event) => $options.switchTab("profile")),
-    v: common_vendor.sei(common_vendor.gei(_ctx, ""), "view")
+    o: common_vendor.sei(common_vendor.gei(_ctx, ""), "view")
   };
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);

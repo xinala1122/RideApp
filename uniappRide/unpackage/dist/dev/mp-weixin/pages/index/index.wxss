@@ -6,7 +6,6 @@
 		flex-direction: column;
 		height: 100vh;
 		padding: 10px;
-		padding-bottom: 60px; /* 为底部导航栏留出空间 */
 		background-color: #f5f5f5;
 }
 
@@ -17,98 +16,145 @@
 		padding: 10px; /* 减小内边距 */
 		margin-bottom: 10px;
 		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-		height: 200px; /* 固定高度，减小一半左右 */
+		height: auto; /* 自动调整高度以完整显示内容 */
+		min-height: 120px; /* 调整最小高度 */
 }
 .section-title {
-		font-size: 16px; /* 减小字体大小 */
+		font-size: 16px;
 		font-weight: bold;
-		margin-bottom: 5px; /* 减小下边距 */
+		margin-bottom: 8px; /* 增加标题与内容的间距 */
 		color: #333;
+		display: block;
 }
 .data-list {
 		background-color: #f9f9f9;
 		border-radius: 8px;
 		overflow: hidden;
-		height: calc(100% - 25px); /* 计算剩余高度 */
+		height: auto; /* 自动调整高度 */
 }
 .data-list-item {
 		display: flex;
 		justify-content: space-between;
-		padding: 8px 10px; /* 减小内边距 */
+		padding: 6px 10px; /* 减小内边距，减小每行高度 */
 		border-bottom: 1px solid #eee;
 }
 .data-list-item:last-child {
 		border-bottom: none;
 }
 .data-list-label {
-		font-size: 14px; /* 减小字体大小 */
+		font-size: 13px; /* 减小字体大小 */
 		color: #666;
 }
 .data-list-value {
-		font-size: 14px; /* 减小字体大小 */
+		font-size: 13px; /* 减小字体大小 */
 		font-weight: bold;
 		color: #333;
 }
+	
 	/* 中间地图区域样式 */
 .map-section {
 		flex: 1;
 		background-color: #ffffff;
 		border-radius: 10px;
-		padding: 15px;
-		margin-bottom: 10px;
+		padding: 8px;
+		margin-bottom: 8px;
 		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 		display: flex;
 		flex-direction: column;
-		min-height: 250px; /* 设置最小高度 */
+		min-height: 250px;
+}
+.map-section.expanded {
+		min-height: 400px;
 }
 .map-container {
 		flex: 1;
 		background-color: #e0e0e0;
 		border-radius: 5px;
-		display: flex;
-		justify-content: center;
-		align-items: center;
+		overflow: hidden;
+}
+.map {
+		width: 100%;
+		height: 100%;
+}
+	
+	/* 骑行信息区域样式（两行布局：第一行全是标题，第二行全是数据） */
+.riding-info-simple {
+		background-color: #ffffff;
+		border-radius: 8px;
+		padding: 8px;
+		margin-bottom: 8px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		overflow-x: auto;
+		height: auto;
+}
+.info-line {
+		display: block;
+		width: 100%;
+		margin-bottom: 6px;
+		text-align: center;
+		white-space: nowrap;
+}
+.info-line:last-child {
+		margin-bottom: 0;
+}
+.info-item {
+		display: inline-block;
+		width: 25%;
+		font-size: 11px;
+		color: #666;
+		text-align: center;
+		box-sizing: border-box;
+		padding: 0 5px;
+}
+.info-data {
+		display: inline-block;
+		width: 25%;
+		font-size: 14px;
+		color: #333;
+		font-weight: 600;
+		text-align: center;
+		box-sizing: border-box;
+		padding: 0 5px;
 }
 	
 	/* 底部按钮区域样式 */
 .button-section {
-		height: 200px;
+		height: 133px;
 		background-color: #ffffff;
 		border-radius: 10px;
 		padding: 15px;
-		margin-bottom: 10px;
+		margin-bottom: 2.5px;
 		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 .button-grid {
 		position: relative;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 		width: 100%;
 		height: 100%;
 }
 .button-corner {
 		position: absolute;
-		width: 80px;
-		height: 80px;
+		width: 90px;
+		height: 40px;
 		background-color: #4CAF50;
-		border-radius: 10px;
+		border-radius: 8px;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 }
-.top-left {
-		top: 0;
-		left: 0;
-}
-.top-right {
-		top: 0;
-		right: 0;
-}
+	
+	/* 调整按钮位置，确保在开始骑行按钮的左右中间对称显示 */
 .bottom-left {
-		bottom: 0;
-		left: 0;
+		top: 50%; /* 与开始骑行按钮同一垂直位置 */
+		transform: translateY(-50%); /* 垂直居中对齐 */
+		left: calc(50% - 160px); /* 调整水平位置 */
 }
 .bottom-right {
-		bottom: 0;
-		right: 0;
+		top: 50%; /* 与开始骑行按钮同一垂直位置 */
+		transform: translateY(-50%); /* 垂直居中对齐 */
+		right: calc(50% - 160px); /* 调整水平位置 */
 }
 .button-center {
 		position: absolute;
@@ -117,12 +163,41 @@
 		transform: translate(-50%, -50%);
 		width: 100px;
 		height: 100px;
-		background-color: #FF5722;
+		background-color: #20e95cff;
 		border-radius: 50%;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+	
+	/* 骑行控制按钮（向下移动，减少与底部导航栏的间距） */
+.riding-controls-adjusted {
+		display: flex;
+		justify-content: center;
+		gap: 60px;
+		margin-bottom: 5px; /* 减少底部外边距 */
+		align-items: center;
+		flex-direction: row;
+		height: auto;
+		padding-top: 5px; /* 增加顶部内边距，保持按钮位置 */
+}
+.riding-button {
+		width: 60px;
+		height: 60px;
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+		z-index: 10;
+		position: relative;
+}
+.end-button {
+		background-color: #FF5722;
+}
+.pause-button {
+		background-color: #4CAF50;
 }
 .button-text {
 		color: white;
@@ -135,45 +210,13 @@
 		font-weight: bold;
 		text-align: center;
 }
-	/* 自由骑按钮样式 - 使用原来的开始骑行按钮颜色 */
+	
+	/* 自由骑按钮样式 */
 .free-ride {
 		background-color: #FF5722;
 }
 	
-	/* 开始骑行按钮样式 - 使用原来的自由骑按钮颜色 */
+	/* 开始骑行按钮样式 */
 .start-riding {
 		background-color: #20e95cff;
-}
-.tab-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 50px;
-    background-color: #ffffff;
-    display: flex;
-	flex-direction: row; /* 明确指定为行布局 */
-    justify-content: space-between; /* 左中右布局 */
-    align-items: center; /* 垂直居中 */
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-    z-index: 100;
-}
-.tab-item {
-    flex: 1; /* 每个项目占据相等的空间 */
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center; /* 文本居中 */
-}
-.tab-item.active {
-		border-bottom: 2px solid #FF5722;
-}
-.tab-text {
-		font-size: 16px;
-		color: #666;
-}
-.tab-item.active .tab-text {
-		color: #FF5722;
-		font-weight: bold;
 }

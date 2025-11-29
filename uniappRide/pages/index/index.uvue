@@ -1,7 +1,7 @@
 <template>
 	<view class="container">
 		<!-- 顶部数据区域 -->
-		<view class="data-section">
+		<view class="data-section" v-if="!isRiding">
 			<text class="section-title">我的数据</text>
 			<view class="data-list">
 				<view class="data-list-item">
@@ -20,23 +20,48 @@
 		</view>
 		
 		<!-- 中间地图区域 -->
-		<view class="map-section">
-			<text class="section-title">地图区域</text>
-			<view class="map-container">
-				<!-- 地图内容将在这里显示 -->
-				<text>地图加载中...</text>
+			<view class="map-section" :class="{ expanded: isRiding }">
+				<text class="section-title">地图区域</text>
+				<view class="map-container">
+					<!-- 使用uni-app的map组件，优化定位显示 -->
+					<map id="map" class="map" 
+						:latitude="latitude" 
+						:longitude="longitude" 
+						:scale="scale" 
+						:markers="markers" 
+						:show-location="true" 
+						:show-compass="true"
+						:enable-overlooking="true"
+						:enable-zoom="true"
+						:enable-scroll="true"
+						:enable-rotate="true"
+						@load="onMapLoaded" 
+						@regionchange="onRegionChange"
+						@locationchange="onLocationChange"></map>
+				</view>
+			</view>
+		
+		<!-- 骑行信息区域（两行布局：第一行全是标题，第二行全是数据） -->
+		<view class="riding-info-simple" v-if="isRiding">
+			<!-- 第一行：所有标题 -->
+			<view class="info-line">
+				<span class="info-item">实时速度</span>
+				<span class="info-item">平均速度</span>
+				<span class="info-item">骑行里程</span>
+				<span class="info-item">骑行时间</span>
+			</view>
+			<!-- 第二行：所有数值 -->
+			<view class="info-line">
+				<span class="info-data">{{currentSpeed}}km/h</span>
+				<span class="info-data">{{averageSpeed}}km/h</span>
+				<span class="info-data">{{ridingDistance}}km</span>
+				<span class="info-data">{{ridingTime}}</span>
 			</view>
 		</view>
 		
 		<!-- 底部按钮区域 -->
-		<view class="button-section">
+		<view class="button-section" v-if="!isRiding">
 			<view class="button-grid">
-				<view class="button-corner top-left free-ride" @click="freeRide">
-					<text class="button-text">自由骑</text>
-				</view>
-				<view class="button-corner top-right" @click="sameAsLast">
-					<text class="button-text">上次一样</text>
-				</view>
 				<view class="button-center start-riding" @click="startRiding">
 					<text class="button-text-large">开始骑行</text>
 				</view>
@@ -49,94 +74,591 @@
 			</view>
 		</view>
 		
-		<!-- 底部导航栏 -->
-		<view class="tab-bar">
-			<view class="tab-item" :class="{ active: activeTab === 'riding' }" @click="switchTab('riding')">
-				<text class="tab-text">骑行</text>
+		<!-- 骑行控制按钮（向下移动，减少与底部导航栏的间距） -->
+		<view class="riding-controls-adjusted" v-if="isRiding">
+			<view class="riding-button pause-button" @click="pauseRiding">
+				<text class="button-text">{{isPaused ? '继续' : '暂停'}}</text>
 			</view>
-			<view class="tab-item" :class="{ active: activeTab === 'discover' }" @click="switchTab('discover')">
-				<text class="tab-text">发现</text>
-			</view>
-			<view class="tab-item" :class="{ active: activeTab === 'profile' }" @click="switchTab('profile')">
-				<text class="tab-text">我的</text>
+			<view class="riding-button end-button" @click="endRiding">
+				<text class="button-text">结束</text>
 			</view>
 		</view>
 	</view>
 </template>
 <script>
-	export default {
+export default {
 		data() {
 			return {
 				// 数据展示
 				totalDistance: 0,
 				maxSpeed: 0,
 				maxTime: 0,
-				// 当前选中的标签页
-				activeTab: 'riding'
+				
+				// 地图相关
+		latitude: 39.90923, // 默认坐标
+		longitude: 116.407413, // 默认坐标
+		scale: 18, // 增加缩放级别以便更精确显示
+		markers: [],
+		mapContext: null,
+		locationEnabled: false, // 位置服务是否启用
+				
+				// 骑行相关
+				isRiding: false,
+				isPaused: false,
+				currentSpeed: 0,
+				averageSpeed: 0,
+				ridingDistance: 0,
+				ridingTime: '00:00:00',
+				timeCount: 0,
+				timer: null,
+				
+				// 位置跟踪
+				locationWatchId: null
 			}
 		},
 		onLoad() {
 			// 页面加载时初始化数据
 			this.initData();
+			// 初始化地图
+			this.initMap();
+			// 请求位置权限
+			this.requestLocationPermission();
+		},
+		onUnload() {
+			// 清理定时器和位置监听
+			this.clearTimer();
+			this.clearLocationWatch();
 		},
 		methods: {
-			// 初始化数据
-			initData() {
-				// 这里可以从本地存储或服务器获取数据
-				this.totalDistance = 128.5;
-				this.maxSpeed = 35.2;
-				this.maxTime = 4.5;
-			},
+		// 初始化数据
+		initData() {
+			// 这里可以从本地存储或服务器获取数据
+			this.totalDistance = 128.5;
+			this.maxSpeed = 35.2;
+			this.maxTime = 4.5;
+		},
+		
+		// 初始化地图
+		initMap() {
+			console.log('初始化地图上下文');
+			try {
+				this.mapContext = uni.createMapContext('map');
+				console.log('地图上下文创建成功');
+			} catch (exception) {
+				console.error('创建地图上下文时发生异常:', exception);
+				this.mapContext = null;
+			}
+		},
+		
+		// 请求位置权限
+		requestLocationPermission() {
+			console.log('开始请求位置权限...');
 			
-			// 按钮点击事件
-			startRiding() {
-				console.log('开始骑行');
-				// 实现开始骑行的逻辑
-			},
-			freeRide() {
-				console.log('自由骑模式');
-				// 实现自由骑模式的逻辑
-			},
-			sameAsLast() {
-				console.log('上次一样');
-				// 实现与上次相同的逻辑
-			},
-			selectDestination() {
-				console.log('选择目的地');
-				// 实现选择目的地的逻辑
-			},
-			selectRoute() {
-				console.log('选择路书');
-				// 实现选择路书的逻辑
-			},
-			
-			// 切换标签页
-			switchTab(tab) {
-				this.activeTab = tab;
-				console.log('切换到标签页:', tab);
-				if(tab === 'profile') {
-					// 跳转到我的页面
-					uni.switchTab({
-						url: '/pages/index/my'
+			// 首先检查是否支持位置权限
+			try {
+				// 先检查当前的位置权限状态
+				uni.getSetting({
+					success: (res) => {
+						console.log('获取权限设置成功:', JSON.stringify(res));
+						// 检查位置权限
+						if (res.authSetting && res.authSetting['scope.userLocation']) {
+							console.log('位置权限已开启');
+							// 直接获取位置
+							this.getLocation();
+						} else {
+							console.log('位置权限未开启，请求权限');
+							// 请求位置权限
+							uni.requestLocationPermission({
+								success: (authRes) => {
+									console.log('请求位置权限成功:', JSON.stringify(authRes));
+									if (authRes.authSetting && authRes.authSetting['scope.userLocation']) {
+										console.log('用户允许了位置权限');
+										// 获取位置
+										this.getLocation();
+									} else {
+										console.log('用户拒绝了位置权限');
+										this.locationEnabled = false;
+										// 提示用户需要开启权限
+										try {
+											uni.showToast({
+												title: '位置权限被拒绝，地图功能将受限',
+												icon: 'none',
+												duration: 3000
+											});
+										} catch (toastErr) {
+											console.error('显示提示时发生错误:', JSON.stringify(toastErr));
+										}
+										// 提供一个打开设置的选项
+										uni.showModal({
+											title: '权限提示',
+											content: '需要位置权限才能使用地图功能，请在设置中开启',
+											confirmText: '去设置',
+											cancelText: '取消',
+											success: (modalRes) => {
+												if (modalRes.confirm) {
+													// 打开设置页面
+													uni.openSetting({
+														success: (settingRes) => {
+															console.log('设置页面操作结果:', JSON.stringify(settingRes));
+															if (settingRes.authSetting && settingRes.authSetting['scope.userLocation']) {
+																console.log('用户在设置中开启了位置权限');
+																this.getLocation();
+															} else {
+																console.log('用户在设置中未开启位置权限');
+																uni.showToast({
+																	title: '位置权限未开启，地图功能将受限',
+																	icon: 'none',
+																	duration: 3000
+																});
+															}
+														}
+													});
+											}
+										}
+									});
+								}
+							},
+							fail: (authErr) => {
+								console.error('请求位置权限失败:', JSON.stringify(authErr));
+								this.locationEnabled = false;
+								// 处理错误情况
+								if (authErr.errMsg.includes('auth deny')) {
+									// 用户拒绝了权限
+									uni.showToast({
+										title: '位置权限被拒绝',
+										icon: 'none',
+										duration: 3000
+									});
+								} else {
+									// 其他错误
+									uni.showToast({
+										title: '请求位置权限失败',
+										icon: 'none',
+										duration: 3000
+									});
+								}
+							}
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('获取权限设置失败:', JSON.stringify(err));
+					this.locationEnabled = false;
+					uni.showToast({
+						title: '无法获取权限设置',
+						icon: 'none',
+						duration: 3000
 					});
 				}
-				if(tab === 'discover') {
-					// 跳转到我的页面
-					uni.switchTab({
-						url: '/pages/index/discover'
+			});
+			} catch (exception) {
+				console.error('请求位置权限时发生异常:', JSON.stringify(exception));
+				this.locationEnabled = false;
+				uni.showToast({
+					title: '系统不支持位置服务',
+					icon: 'none',
+					duration: 5000
+				});
+			}
+		},
+		
+		// 获取当前位置
+		getLocation() {
+			console.log('开始获取当前位置...');
+			// 确保没有重复调用获取位置
+			if (this.locationEnabled) {
+				console.log('位置服务已启用，跳过重复获取');
+				return;
+			}
+			
+			try {
+				// 先检查网络状态
+				uni.getNetworkType({
+					success: (networkRes) => {
+						console.log('网络状态:', JSON.stringify(networkRes));
+						// 如果没有网络连接，先提示用户
+						if (networkRes.networkType === 'none') {
+							try {
+								uni.showToast({
+									title: '当前无网络连接，请检查网络设置',
+									icon: 'none',
+									duration: 3000
+								});
+							} catch (toastErr) {
+								console.error('显示提示时发生错误:', JSON.stringify(toastErr));
+							}
+							return;
+						}
+						
+						// 调用获取位置API
+						uni.getLocation({
+							type: 'gcj02',
+							highAccuracy: true,
+							altitude: true,
+							success: (res) => {
+								console.log('获取位置成功:', JSON.stringify(res));
+								this.locationEnabled = true;
+								// 更新地图位置
+								this.latitude = res.latitude;
+								this.longitude = res.longitude;
+								// 添加当前位置标记
+								this.updateMarker(res.latitude, res.longitude);
+								// 启动位置监听
+								this.startLocationWatch();
+								// 移动地图到当前位置
+								this.moveToLocation();
+							},
+							fail: (err) => {
+								console.error('获取位置失败:', JSON.stringify(err));
+								this.locationEnabled = false;
+								
+								// 根据错误类型显示不同提示
+								let errorMsg = '获取位置失败';
+								
+								// 更详细的错误类型判断
+								if (err.errMsg.includes('frequently')) {
+									errorMsg = '获取位置过于频繁，请稍后再试';
+								} else if (err.errMsg.includes('system')) {
+									errorMsg = '系统位置服务未开启，请检查设置';
+								} else if (err.errMsg.includes('failed')) {
+									errorMsg = '定位失败，请检查GPS信号或稍后重试';
+								} else if (err.errMsg.includes('auth deny')) {
+									errorMsg = '位置权限被拒绝，请在设置中开启';
+								} else if (err.errMsg.includes('auth canceled')) {
+									errorMsg = '您取消了位置权限请求';
+								} else if (err.errMsg.includes('permission')) {
+									errorMsg = '缺少位置权限，请在设置中开启';
+								} else if (err.errMsg.includes('ERROR_NOCELL&WIFI_LOCATIONSWITCHOFF')) {
+									// 处理特定的定位错误：无移动网络且WiFi定位关闭
+									errorMsg = '无网络定位信号，请开启移动网络或WiFi';
+								} else {
+									errorMsg = `获取位置信息时发生错误(${err.errMsg || '未知错误'})`;
+								}
+								
+								console.log('错误信息:', errorMsg, '原始错误:', err.errMsg, '错误代码:', err.errCode);
+								
+								// 避免日志文件访问错误
+								try {
+									uni.showToast({
+										title: errorMsg,
+										icon: 'none',
+										duration: 5000 // 延长显示时间，让用户看清楚错误信息
+									});
+								} catch (toastErr) {
+									console.error('显示提示时发生错误:', JSON.stringify(toastErr));
+								}
+							}
+						});
+					}
+				});
+			} catch (exception) {
+				console.error('获取位置时发生异常:', JSON.stringify(exception));
+				this.locationEnabled = false;
+				// 显示用户友好的错误提示
+				try {
+					uni.showToast({
+						title: '获取位置信息时发生异常',
+						icon: 'none',
+						duration: 3000
 					});
+				} catch (toastErr) {
+					console.error('显示提示时发生错误:', JSON.stringify(toastErr));
 				}
 			}
+		},
+		
+		// 开始位置监听
+		startLocationWatch() {
+			console.log('准备启动位置监听...');
+			// 先检查是否已经有位置监听，避免重复设置
+			if (this.locationWatchId) {
+				console.log('位置监听已存在，先清理');
+				try {
+					uni.offLocationChange(this.locationWatchId);
+				} catch (offErr) {
+					console.error('关闭位置监听时发生错误:', JSON.stringify(offErr));
+				}
+				this.locationWatchId = null;
+			}
+
+			// 检查是否已经获取到位置，如果没有则先不启动监听
+			if (!this.latitude || !this.longitude) {
+				console.log('尚未获取到位置，先不启动监听');
+				return;
+			}
+
+			try {
+				// 设置位置更新配置，调整为1秒更新一次
+				uni.startLocationUpdate({
+					type: 'gcj02',
+					altitude: true,
+					geocode: false,
+					highAccuracyExpireTime: 30000,
+					interval: 1000, // 1秒更新一次
+					success: () => {
+						console.log('位置更新服务已启动，每秒更新一次');
+						// 添加位置变化监听
+						this.locationWatchId = uni.onLocationChange((res) => {
+							try {
+								console.log('位置变化:', JSON.stringify(res));
+								this.locationEnabled = true;
+								// 更新地图位置
+								this.latitude = res.latitude;
+								this.longitude = res.longitude;
+								// 更新当前位置标记
+								this.updateMarker(res.latitude, res.longitude);
+								
+								// 更新当前速度
+								if (res.speed !== undefined) {
+									// 速度单位转换（如果需要）
+									let speed = parseFloat(res.speed);
+									// 确保速度值合理
+									if (speed < 0) speed = 0;
+									this.currentSpeed = speed.toFixed(1);
+									// 如果在骑行中且未暂停，更新平均速度
+									if (this.isRiding && !this.isPaused) {
+										this.updateAverageSpeed();
+									}
+								}
+							} catch (locationErr) {
+								console.error('处理位置变化时发生错误:', JSON.stringify(locationErr));
+							}
+						});
+					},
+					fail: (err) => {
+						console.error('启动位置更新失败:', JSON.stringify(err));
+						this.locationEnabled = false;
+						
+						// 根据错误类型显示不同的提示信息
+						let errorMsg = '位置更新服务启动失败';
+						if (err.errMsg && err.errMsg.includes('failed')) {
+							errorMsg = '定位服务启动失败，请检查GPS是否开启';
+						} else if (err.errMsg && err.errMsg.includes('permission')) {
+							errorMsg = '缺少位置权限，请在设置中开启';
+						} else if (err.errMsg && err.errMsg.includes('backgroundfetch')) {
+							// 处理后台获取数据失败的情况
+							errorMsg = '后台位置更新失败，请保持应用在前台使用';
+						}
+						
+						// 只在未获取到位置时显示提示
+						if (!this.latitude || !this.longitude) {
+							try {
+								uni.showToast({
+									title: errorMsg,
+									icon: 'none',
+									duration: 3000
+								});
+							} catch (toastErr) {
+								console.error('显示提示时发生错误:', JSON.stringify(toastErr));
+							}
+						}
+					}
+				}); // 确保这里的分号存在
+			} catch (exception) {
+				console.error('启动位置监听时发生异常:', JSON.stringify(exception));
+				this.locationEnabled = false;
+				// 显示用户友好的错误提示
+				try {
+					uni.showToast({
+						title: '位置监听服务异常',
+						icon: 'none',
+						duration: 3000
+					});
+				} catch (toastErr) {
+					console.error('显示提示时发生错误:', JSON.stringify(toastErr));
+				}
+			}
+		},
+		// 清理位置监听
+		clearLocationWatch() {
+				console.log('清理位置监听...');
+				if (this.locationWatchId) {
+					try {
+						uni.offLocationChange(this.locationWatchId);
+					} catch (offErr) {
+						console.error('关闭位置监听时发生错误:', JSON.stringify(offErr));
+					}
+					this.locationWatchId = null;
+				}
+				try {
+					uni.stopLocationUpdate({
+						success: () => {
+							console.log('位置更新服务已停止');
+						},
+						fail: (stopErr) => {
+							console.error('停止位置更新服务时发生错误:', JSON.stringify(stopErr));
+						}
+					});
+			} catch (stopErr) {
+				console.error('停止位置更新服务时发生异常:', JSON.stringify(stopErr));
+			}
+			},
+			
+			// 地图加载完成
+		onMapLoaded() {
+			console.log('地图加载完成');
+			// 地图加载完成后，检查是否已获取位置，如果没有则尝试获取
+			if (!this.locationEnabled) {
+				console.log('地图加载但位置服务未启用，尝试重新获取位置');
+				this.requestLocationPermission();
+			} else {
+				console.log('地图加载且位置服务已启用，移动到当前位置');
+				this.moveToLocation();
+			}
+		},
+		
+		// 地图位置变化回调
+		onLocationChange(e) {
+				// 增强错误处理
+				try {
+					if (!e || !e.detail) {
+						console.error('地图位置变化事件数据无效');
+						return;
+					}
+					console.log('地图位置变化:', JSON.stringify(e));
+					// 这里可以处理地图位置变化事件
+				} catch (err) {
+					console.error('处理地图位置变化时发生错误:', JSON.stringify(err));
+				}
+			},
+			
+			// 更新当前位置标记
+		updateMarker(lat, lng) {
+			console.log('更新位置标记:', lat, lng);
+			// 使用正确的标记配置，确保能在地图上显示
+			this.markers = [{
+				id: 1,
+				latitude: lat,
+				longitude: lng,
+				title: '我的位置',
+				// 对于uni-app，默认使用系统提供的标记图标
+				// 不指定iconPath，使用默认图标
+				width: 30,
+				height: 30,
+				anchor: { x: 0.5, y: 0.5 },
+				// 确保标记可点击
+				callout: {
+					content: '我的位置',
+					display: 'BYCLICK'
+				}
+			}];
+		},
+			
+			// 移动地图到当前位置
+		moveToLocation() {
+			// 确保地图上下文已创建且有有效位置
+			if (this.mapContext && this.latitude && this.longitude) {
+				console.log('移动地图到当前位置:', this.latitude, this.longitude);
+				try {
+					this.mapContext.moveToLocation({
+						success: () => {
+							console.log('地图移动到当前位置成功');
+						},
+						fail: (err) => {
+							console.error('地图移动到当前位置失败:', JSON.stringify(err));
+						}
+					});
+			} catch (exception) {
+				console.error('移动地图时发生异常:', JSON.stringify(exception));
+			}
+			} else {
+				console.log('无法移动地图: 地图上下文未创建或位置无效');
+			}
+		},
+			
+			// 开始骑行
+			startRiding() {
+				console.log('开始骑行');
+				this.isRiding = true;
+				this.isPaused = false;
+				this.ridingDistance = 0;
+				this.timeCount = 0;
+				this.updateTimeDisplay();
+				this.startTimer();
+			},
+			
+			// 暂停骑行
+			pauseRiding() {
+				this.isPaused = !this.isPaused;
+				if (this.isPaused) {
+					this.clearTimer();
+				} else {
+					this.startTimer();
+				}
+			},
+			
+			// 结束骑行
+		endRiding() {
+			console.log('结束骑行');
+			this.isRiding = false;
+			this.isPaused = false;
+			this.clearTimer();
+			// 更新总数据
+			this.totalDistance = (parseFloat(this.totalDistance) + parseFloat(this.ridingDistance)).toFixed(1);
+			if (parseFloat(this.currentSpeed) > parseFloat(this.maxSpeed)) {
+				this.maxSpeed = this.currentSpeed;
+			}
+		},
+
+		// 开始计时器
+		startTimer() {
+			this.timer = setInterval(() => {
+				if (!this.isPaused) {
+					this.timeCount++;
+					this.updateTimeDisplay();
+					// 模拟增加距离（实际应根据GPS计算）
+					if (this.currentSpeed > 0) {
+						this.ridingDistance = (parseFloat(this.ridingDistance) + parseFloat(this.currentSpeed) / 3600).toFixed(2);
+					}
+				}
+			}, 1000);
+		},
+		
+		// 清理计时器
+		clearTimer() {
+			if (this.timer) {
+				clearInterval(this.timer);
+				this.timer = null;
+			}
+		},
+		
+		// 更新时间显示
+		updateTimeDisplay() {
+			let hours = Math.floor(this.timeCount / 3600);
+			let minutes = Math.floor((this.timeCount % 3600) / 60);
+			let seconds = this.timeCount % 60;
+			this.ridingTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		},
+		
+		// 更新平均速度
+		updateAverageSpeed() {
+			// 简单的平均速度计算（实际应用中应根据总距离和总时间计算）
+			if (this.timeCount > 0) {
+				let totalSpeed = parseFloat(this.currentSpeed) + parseFloat(this.averageSpeed) * (this.timeCount - 1);
+				this.averageSpeed = (totalSpeed / this.timeCount).toFixed(1);
+			} else {
+				this.averageSpeed = this.currentSpeed;
+			}
+		},
+		
+		// 其他按钮点击事件
+		
+		selectDestination() {
+			console.log('选择目的地');
+			// 实现选择目的地的逻辑
+		},
+		selectRoute() {
+			console.log('选择路书');
+			// 实现选择路书的逻辑
 		}
-	}
-</script>
+	//}
+}}</script>
 <style>
 	.container {
 		display: flex;
 		flex-direction: column;
 		height: 100vh;
 		padding: 10px;
-		padding-bottom: 60px; /* 为底部导航栏留出空间 */
 		background-color: #f5f5f5;
 	}
 
@@ -147,26 +669,28 @@
 		padding: 10px; /* 减小内边距 */
 		margin-bottom: 10px;
 		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-		height: 200px; /* 固定高度，减小一半左右 */
+		height: auto; /* 自动调整高度以完整显示内容 */
+		min-height: 120px; /* 调整最小高度 */
 	}
 	
 .section-title {
-		font-size: 16px; /* 减小字体大小 */
+		font-size: 16px;
 		font-weight: bold;
-		margin-bottom: 5px; /* 减小下边距 */
+		margin-bottom: 8px; /* 增加标题与内容的间距 */
 		color: #333;
+		display: block;
 	}
 	
 	.data-list {
 		background-color: #f9f9f9;
 		border-radius: 8px;
 		overflow: hidden;
-		height: calc(100% - 25px); /* 计算剩余高度 */
+		height: auto; /* 自动调整高度 */
 	}
 	.data-list-item {
 		display: flex;
 		justify-content: space-between;
-		padding: 8px 10px; /* 减小内边距 */
+		padding: 6px 10px; /* 减小内边距，减小每行高度 */
 		border-bottom: 1px solid #eee;
 	}
 	
@@ -175,82 +699,130 @@
 	}
 	
 	.data-list-label {
-		font-size: 14px; /* 减小字体大小 */
+		font-size: 13px; /* 减小字体大小 */
 		color: #666;
 	}
 	
 	.data-list-value {
-		font-size: 14px; /* 减小字体大小 */
+		font-size: 13px; /* 减小字体大小 */
 		font-weight: bold;
 		color: #333;
 	}
+	
 	/* 中间地图区域样式 */
 	.map-section {
 		flex: 1;
 		background-color: #ffffff;
 		border-radius: 10px;
-		padding: 15px;
-		margin-bottom: 10px;
+		padding: 8px;
+		margin-bottom: 8px;
 		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 		display: flex;
 		flex-direction: column;
-		min-height: 250px; /* 设置最小高度 */
+		min-height: 250px;
+	}
+	
+	.map-section.expanded {
+		min-height: 400px;
 	}
 	
 	.map-container {
 		flex: 1;
 		background-color: #e0e0e0;
 		border-radius: 5px;
-		display: flex;
-		justify-content: center;
-		align-items: center;
+		overflow: hidden;
+	}
+	
+	.map {
+		width: 100%;
+		height: 100%;
+	}
+	
+	/* 骑行信息区域样式（两行布局：第一行全是标题，第二行全是数据） */
+	.riding-info-simple {
+		background-color: #ffffff;
+		border-radius: 8px;
+		padding: 8px;
+		margin-bottom: 8px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		overflow-x: auto;
+		height: auto;
+	}
+	
+	.info-line {
+		display: block;
+		width: 100%;
+		margin-bottom: 6px;
+		text-align: center;
+		white-space: nowrap;
+	}
+	
+	.info-line:last-child {
+		margin-bottom: 0;
+	}
+	
+	.info-item {
+		display: inline-block;
+		width: 25%;
+		font-size: 11px;
+		color: #666;
+		text-align: center;
+		box-sizing: border-box;
+		padding: 0 5px;
+	}
+	
+	.info-data {
+		display: inline-block;
+		width: 25%;
+		font-size: 14px;
+		color: #333;
+		font-weight: 600;
+		text-align: center;
+		box-sizing: border-box;
+		padding: 0 5px;
 	}
 	
 	/* 底部按钮区域样式 */
 	.button-section {
-		height: 200px;
+		height: 133px;
 		background-color: #ffffff;
 		border-radius: 10px;
 		padding: 15px;
-		margin-bottom: 10px;
+		margin-bottom: 2.5px;
 		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 	}
 	
 	.button-grid {
 		position: relative;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 		width: 100%;
 		height: 100%;
 	}
 	
 	.button-corner {
 		position: absolute;
-		width: 80px;
-		height: 80px;
+		width: 90px;
+		height: 40px;
 		background-color: #4CAF50;
-		border-radius: 10px;
+		border-radius: 8px;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 	}
 	
-	.top-left {
-		top: 0;
-		left: 0;
-	}
-	
-	.top-right {
-		top: 0;
-		right: 0;
-	}
-	
+	/* 调整按钮位置，确保在开始骑行按钮的左右中间对称显示 */
 	.bottom-left {
-		bottom: 0;
-		left: 0;
+		top: 50%; /* 与开始骑行按钮同一垂直位置 */
+		transform: translateY(-50%); /* 垂直居中对齐 */
+		left: calc(50% - 160px); /* 调整水平位置 */
 	}
 	
 	.bottom-right {
-		bottom: 0;
-		right: 0;
+		top: 50%; /* 与开始骑行按钮同一垂直位置 */
+		transform: translateY(-50%); /* 垂直居中对齐 */
+		right: calc(50% - 160px); /* 调整水平位置 */
 	}
 	
 	.button-center {
@@ -260,12 +832,44 @@
 		transform: translate(-50%, -50%);
 		width: 100px;
 		height: 100px;
-		background-color: #FF5722;
+		background-color: #20e95cff;
 		border-radius: 50%;
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+	}
+	
+	/* 骑行控制按钮（向下移动，减少与底部导航栏的间距） */
+	.riding-controls-adjusted {
+		display: flex;
+		justify-content: center;
+		gap: 60px;
+		margin-bottom: 5px; /* 减少底部外边距 */
+		align-items: center;
+		flex-direction: row;
+		height: auto;
+		padding-top: 5px; /* 增加顶部内边距，保持按钮位置 */
+	}
+	
+	.riding-button {
+		width: 60px;
+		height: 60px;
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+		z-index: 10;
+		position: relative;
+	}
+	
+	.end-button {
+		background-color: #FF5722;
+	}
+	
+	.pause-button {
+		background-color: #4CAF50;
 	}
 	
 	.button-text {
@@ -280,51 +884,15 @@
 		font-weight: bold;
 		text-align: center;
 	}
-	/* 自由骑按钮样式 - 使用原来的开始骑行按钮颜色 */
+	
+	/* 自由骑按钮样式 */
 	.free-ride {
 		background-color: #FF5722;
 	}
 	
-	/* 开始骑行按钮样式 - 使用原来的自由骑按钮颜色 */
+	/* 开始骑行按钮样式 */
 	.start-riding {
 		background-color: #20e95cff;
 	}
-	.tab-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 50px;
-    background-color: #ffffff;
-    display: flex;
-	flex-direction: row; /* 明确指定为行布局 */
-    justify-content: space-between; /* 左中右布局 */
-    align-items: center; /* 垂直居中 */
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-    z-index: 100;
-}
-
-.tab-item {
-    flex: 1; /* 每个项目占据相等的空间 */
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center; /* 文本居中 */
-}
-
-	
-	.tab-item.active {
-		border-bottom: 2px solid #FF5722;
-	}
-	
-	.tab-text {
-		font-size: 16px;
-		color: #666;
-	}
-	
-	.tab-item.active .tab-text {
-		color: #FF5722;
-		font-weight: bold;
-	}
 </style>
+

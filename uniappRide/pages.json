@@ -3,7 +3,12 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "骑行"
+				"navigationBarTitleText": "骑行",
+				"permission": {
+					"scope.userLocation": {
+						"desc": "用于显示您的当前位置并提供骑行导航服务"
+					}
+				}
 			}
 		},
 		{
@@ -43,7 +48,8 @@
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app x",
 		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"backgroundColor": "#F8F8F8",
+		"usingComponents": {}
 	},
 	"uniIdRouter": {}
 }

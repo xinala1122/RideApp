@@ -85,8 +85,8 @@ const def = (obj, key, value) => {
   });
 };
 const looseToNumber = (val) => {
-  const n = parseFloat(val);
-  return isNaN(n) ? val : n;
+  const n2 = parseFloat(val);
+  return isNaN(n2) ? val : n2;
 };
 function normalizeStyle$1(value) {
   if (isArray(value)) {
@@ -117,6 +117,26 @@ function parseStringStyle(cssText) {
     }
   });
   return ret;
+}
+function normalizeClass$1(value) {
+  let res = "";
+  if (isString(value)) {
+    res = value;
+  } else if (isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const normalized = normalizeClass$1(value[i]);
+      if (normalized) {
+        res += normalized + " ";
+      }
+    }
+  } else if (isObject(value)) {
+    for (const name in value) {
+      if (value[name]) {
+        res += name + " ";
+      }
+    }
+  }
+  return res.trim();
 }
 const toDisplayString = (val) => {
   return isString(val) ? val : val == null ? "" : isArray(val) || isObject(val) && (val.toString === objectToString || !isFunction(val.toString)) ? JSON.stringify(val, replacer, 2) : String(val);
@@ -338,6 +358,33 @@ function normalizeStyle(value) {
     return normalizeStyle$1(value);
   }
 }
+function normalizeClass(value) {
+  let res = "";
+  const g2 = getGlobal$1();
+  if (g2 && g2.UTSJSONObject && value instanceof g2.UTSJSONObject) {
+    g2.UTSJSONObject.keys(value).forEach((key) => {
+      if (value[key]) {
+        res += key + " ";
+      }
+    });
+  } else if (value instanceof Map) {
+    value.forEach((value2, key) => {
+      if (value2) {
+        res += key + " ";
+      }
+    });
+  } else if (isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const normalized = normalizeClass(value[i]);
+      if (normalized) {
+        res += normalized + " ";
+      }
+    }
+  } else {
+    res = normalizeClass$1(value);
+  }
+  return res.trim();
+}
 const encode = encodeURIComponent;
 function stringifyQuery(obj, encodeStr = encode) {
   const res = obj ? Object.keys(obj).map((key) => {
@@ -410,7 +457,8 @@ const MINI_PROGRAM_PAGE_RUNTIME_HOOKS = /* @__PURE__ */ (() => {
   return {
     onPageScroll: 1,
     onShareAppMessage: 1 << 1,
-    onShareTimeline: 1 << 2
+    onShareTimeline: 1 << 2,
+    onShareChat: 1 << 3
   };
 })();
 function isUniLifecycleHook(name, value, checkType = true) {
@@ -5799,6 +5847,7 @@ function genUniElementId(_ctx, idBinding, genId) {
 const o = (value, key) => vOn(value, key);
 const f = (source, renderItem) => vFor(source, renderItem);
 const e = (target, ...sources) => extend(target, ...sources);
+const n = (value) => normalizeClass(value);
 const t = (val) => toDisplayString(val);
 const sei = setUniElementId;
 const gei = genUniElementId;
@@ -6472,8 +6521,8 @@ const $once = defineSyncApi(API_ONCE, (name, callback) => {
 const $off = defineSyncApi(API_OFF, (name, callback) => {
   if (!isArray(name))
     name = name ? [name] : [];
-  name.forEach((n) => {
-    eventBus.off(n, callback);
+  name.forEach((n2) => {
+    eventBus.off(n2, callback);
   });
 }, OffProtocol);
 const $emit = defineSyncApi(API_EMIT, (name, ...args) => {
@@ -6847,9 +6896,9 @@ function populateParameters(fromRes, toRes) {
     appVersion: "1.0.0",
     appVersionCode: "100",
     appLanguage: getAppLanguage(hostLanguage),
-    uniCompileVersion: "4.76",
-    uniCompilerVersion: "4.76",
-    uniRuntimeVersion: "4.76",
+    uniCompileVersion: "4.85",
+    uniCompilerVersion: "4.85",
+    uniRuntimeVersion: "4.85",
     uniPlatform: "mp-weixin",
     deviceBrand,
     deviceModel: model,
@@ -6877,8 +6926,8 @@ function populateParameters(fromRes, toRes) {
   };
   {
     try {
-      parameters.uniCompilerVersionCode = parseFloat("4.76");
-      parameters.uniRuntimeVersionCode = parseFloat("4.76");
+      parameters.uniCompilerVersionCode = parseFloat("4.85");
+      parameters.uniRuntimeVersionCode = parseFloat("4.85");
     } catch (error) {
     }
   }
@@ -7005,14 +7054,14 @@ const getAppBaseInfo = {
       appLanguage: getAppLanguage(hostLanguage),
       isUniAppX: true,
       uniPlatform: "mp-weixin",
-      uniCompileVersion: "4.76",
-      uniCompilerVersion: "4.76",
-      uniRuntimeVersion: "4.76"
+      uniCompileVersion: "4.85",
+      uniCompilerVersion: "4.85",
+      uniRuntimeVersion: "4.85"
     };
     {
       try {
-        parameters.uniCompilerVersionCode = parseFloat("4.76");
-        parameters.uniRuntimeVersionCode = parseFloat("4.76");
+        parameters.uniCompilerVersionCode = parseFloat("4.85");
+        parameters.uniRuntimeVersionCode = parseFloat("4.85");
       } catch (error) {
       }
     }
@@ -7396,18 +7445,22 @@ function initOnError() {
       originalConsole.error(err);
     }
   }
-  if (typeof index.onError === "function") {
-    index.onError(onError2);
-  }
-  if (typeof index.onUnhandledRejection === "function") {
-    index.onUnhandledRejection(onError2);
+  if (typeof index !== "undefined") {
+    if (typeof index.onError === "function") {
+      index.onError(onError2);
+    }
+    if (typeof index.onUnhandledRejection === "function") {
+      index.onUnhandledRejection(onError2);
+    }
   }
   return function offError2() {
-    if (typeof index.offError === "function") {
-      index.offError(onError2);
-    }
-    if (typeof index.offUnhandledRejection === "function") {
-      index.offUnhandledRejection(onError2);
+    if (typeof index !== "undefined") {
+      if (typeof index.offError === "function") {
+        index.offError(onError2);
+      }
+      if (typeof index.offUnhandledRejection === "function") {
+        index.offUnhandledRejection(onError2);
+      }
     }
   };
 }
@@ -7787,7 +7840,7 @@ function isConsoleWritable() {
 function initRuntimeSocketService() {
   const hosts = "10.10.1.30,127.0.0.1";
   const port = "8090";
-  const id = "mp-weixin_2ik-gD";
+  const id = "mp-weixin_y31vH1";
   const lazy = typeof swan !== "undefined";
   let restoreError = lazy ? () => {
   } : initOnError();
@@ -7905,7 +7958,6 @@ var IDENTIFIER;
   IDENTIFIER2["UTSJSONObject"] = "UTSJSONObject";
   IDENTIFIER2["JSON"] = "JSON";
   IDENTIFIER2["UTS"] = "UTS";
-  IDENTIFIER2["DEFINE_COMPONENT"] = "defineComponent";
   IDENTIFIER2["VUE"] = "vue";
   IDENTIFIER2["GLOBAL_THIS"] = "globalThis";
   IDENTIFIER2["UTS_TYPE"] = "UTSType";
@@ -8366,8 +8418,25 @@ const UTSJSON = {
       return null;
     }
   },
-  stringify: (value) => {
-    return OriginalJSON.stringify(value);
+  stringify: (value, replacer2, space) => {
+    try {
+      if (!replacer2) {
+        const visited = /* @__PURE__ */ new Set();
+        replacer2 = function(_, v) {
+          if (typeof v === "object") {
+            if (visited.has(v)) {
+              return null;
+            }
+            visited.add(v);
+          }
+          return v;
+        };
+      }
+      return OriginalJSON.stringify(value, replacer2, space);
+    } catch (error) {
+      console.error(error);
+      return "";
+    }
   }
 };
 function mapGet(map, key) {
@@ -9429,6 +9498,25 @@ const createSubpackageApp = initCreateSubpackageApp();
   wx.createPluginApp = global.createPluginApp = createPluginApp;
   wx.createSubpackageApp = global.createSubpackageApp = createSubpackageApp;
 }
+function __values(o2) {
+  var s = typeof Symbol === "function" && Symbol.iterator, m = s && o2[s], i = 0;
+  if (m)
+    return m.call(o2);
+  if (o2 && typeof o2.length === "number")
+    return {
+      next: function() {
+        if (o2 && i >= o2.length)
+          o2 = void 0;
+        return { value: o2 && o2[i++], done: !o2 };
+      }
+    };
+  throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+}
+typeof SuppressedError === "function" ? SuppressedError : function(error, suppressed, message) {
+  var e2 = new Error(message);
+  return e2.name = "SuppressedError", e2.error = error, e2.suppressed = suppressed, e2;
+};
+exports.__values = __values;
 exports._export_sfc = _export_sfc;
 exports.createSSRApp = createSSRApp;
 exports.defineComponent = defineComponent;
@@ -9436,6 +9524,7 @@ exports.e = e;
 exports.f = f;
 exports.gei = gei;
 exports.index = index;
+exports.n = n;
 exports.o = o;
 exports.sei = sei;
 exports.t = t;

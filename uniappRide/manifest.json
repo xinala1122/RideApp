@@ -13,16 +13,36 @@
 		"setting": {
 			"urlCheck": false
 		},
-		"usingComponents": true
+		"usingComponents": true,
+		"permission": {
+			"scope.userLocation": {
+				"desc": "用于显示您的当前位置并提供骑行导航服务"
+			}
+		}
 	},
 	"mp-alipay": {
-		"usingComponents": true
+		"usingComponents": true,
+		"permission": {
+			"scope.userLocation": {
+				"desc": "用于显示您的当前位置并提供骑行导航服务"
+			}
+		}
 	},
 	"mp-baidu": {
-		"usingComponents": true
+		"usingComponents": true,
+		"permission": {
+			"scope.userLocation": {
+				"desc": "用于显示您的当前位置并提供骑行导航服务"
+			}
+		}
 	},
 	"mp-toutiao": {
-		"usingComponents": true
+		"usingComponents": true,
+		"permission": {
+			"scope.userLocation": {
+				"desc": "用于显示您的当前位置并提供骑行导航服务"
+			}
+		}
 	},
 	"uniStatistics": {
 		"enable": false
@@ -37,12 +57,23 @@
 					"xxhdpi": "",
 					"xxxhdpi": ""
 				}
+			},
+			"plugins": {
+				"maps": {
+					"appkey_android": "your_android_amap_appkey",
+					"appkey_ios": "your_ios_amap_appkey"
+				}
 			}
 		}
 	},
 	"app-android": {
 		"distribute": {
-			"modules": {},
+			"modules": {
+				"Maps": {
+					"description": "高德地图",
+					"plugins": "maps"
+				}
+			},
 			"icons": {
 				"hdpi": "E:/12_temp/22_LE3/01_素材/6.喝水提醒15/a1.png",
 				"xhdpi": "E:/12_temp/22_LE3/01_素材/6.喝水提醒15/a1.png",
@@ -55,14 +86,35 @@
 			"abiFilters": [
 				"x86",
 				"x86_64"
+			],
+			"permissions": [
+				"android.permission.ACCESS_COARSE_LOCATION",
+				"android.permission.ACCESS_FINE_LOCATION",
+				"android.permission.ACCESS_LOCATION_EXTRA_COMMANDS",
+				"android.permission.ACCESS_NETWORK_STATE",
+				"android.permission.ACCESS_WIFI_STATE",
+				"android.permission.INTERNET"
 			]
 		}
 	},
 	"app-ios": {
 		"distribute": {
-			"modules": {},
+			"modules": {
+				"Maps": {
+					"description": "高德地图",
+					"plugins": "maps"
+				}
+			},
 			"icons": {},
-			"splashScreens": {}
+			"splashScreens": {},
+			"frameworks": [
+				"CoreLocation.framework",
+				"MapKit.framework"
+			],
+			"plists": {
+				"NSLocationWhenInUseUsageDescription": "需要您的位置信息来显示当前位置和提供骑行导航服务",
+				"NSLocationAlwaysAndWhenInUseUsageDescription": "需要您的位置信息来显示当前位置和提供骑行导航服务"
+			}
 		}
 	},
 	"web": {
