@@ -390,7 +390,7 @@
 
 					// 开始搜索设备，指定设备发现服务UUID
 					uni.startBluetoothDevicesDiscovery({
-						allowDuplicatesKey: true,  // 添加这一行，允许重复上报设备
+						allowDuplicatesKey: false,  // 不允许重复上报设备，解决信号强度刷新过快问题
 						// services: ['0xADB401C0B1C6-11ED-AFA1-0242AC120002'], // 设备发现服务UUID
 						success: (res) => {
 							console.log('开始搜索设备', res);
@@ -432,7 +432,8 @@
 												deviceId: deviceId,
 												name: device.name,
 												RSSI: device.RSSI,
-												connected: false
+												connected: false,
+												lastRssiUpdateTime: now // 添加最后更新时间
 											};
 											that.discoveredDevices.push(newDevice);
 											
@@ -441,12 +442,21 @@
 											that.connectDevice(newDevice);
 										}
 									} else {
-										// 更新已存在的设备信息，但不输出过多日志
-										that.discoveredDevices[idx] = {
-											...that.discoveredDevices[idx],
-											RSSI: device.RSSI,
-											name: device.name || that.discoveredDevices[idx].name
-										};
+										// 添加时间限制，控制信号强度更新频率（每2秒更新一次）
+										const rssiUpdateInterval = 2000; // 2秒
+										const deviceInfo = that.discoveredDevices[idx];
+										const lastUpdateTime = deviceInfo.lastRssiUpdateTime || 0;
+										
+										// 只有当超过更新间隔或信号强度变化较大时才更新
+										if (now - lastUpdateTime >= rssiUpdateInterval || 
+										    Math.abs(device.RSSI - deviceInfo.RSSI) > 5) {
+											that.discoveredDevices[idx] = {
+												...deviceInfo,
+												RSSI: device.RSSI,
+												name: device.name || deviceInfo.name,
+												lastRssiUpdateTime: now
+											};
+										}
 										
 										// 检查设备是否已连接，如果未连接则尝试连接（每2秒只尝试一次）
 										if (!that.discoveredDevices[idx].connected && !that.connectedDeviceId) {
@@ -479,15 +489,15 @@
 										// 只有当没有在搜索时才重新开始搜索，避免频繁停止和启动
 										if (!res.discovering) {
 											// 如果没有在搜索，直接开始搜索
-											uni.startBluetoothDevicesDiscovery({
-												allowDuplicatesKey: true,
-												success: (res) => {
-													// 减少启动搜索时的日志
-												},
-												fail: (err) => {
-													console.error('搜索设备失败', err);
-												}
-											});
+												uni.startBluetoothDevicesDiscovery({
+													allowDuplicatesKey: false,  // 不允许重复上报设备
+													success: (res) => {
+														// 减少启动搜索时的日志
+													},
+													fail: (err) => {
+														console.error('搜索设备失败', err);
+													}
+												});
 										}
 									}
 								},
@@ -677,8 +687,68 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 	
 	// 强制更新UI，确保用户看到连接状态
 	this.$forceUpdate();
-}
-	},
+},
+
+		// 连接设备
+		connectDevice(device) {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
+			console.log('连接设备', device);
+			if (!that.bluetoothEnabled) {
+				uni.showToast({
+					title: '请先开启蓝牙',
+					icon: 'none'
+				});
+				return;
+			}
+
+			// 如果已经有连接的设备，先断开
+			if (that.connectedDeviceId && that.connectedDeviceId !== device.deviceId) {
+				that.disconnectDevice({deviceId: that.connectedDeviceId});
+			}
+
+			that.deviceStatus = '连接中...';
+			// 强制更新UI，让用户看到连接状态变化
+			that.$forceUpdate();
+
+			// 使用uni-app的蓝牙API连接设备
+			uni.createBLEConnection({
+				deviceId: device.deviceId,
+				success: (res) => {
+					console.log('连接设备成功', res);
+
+					// 立即更新设备状态，不等待后续操作
+					device.connected = true;
+					that.connectedDeviceId = device.deviceId;
+					that.deviceName = device.name;
+					that.deviceStatus = '已连接';
+					that.deviceInfo.show = true;
+					that.deviceInfo.connected = true;
+					that.deviceInfo.name = device.name;
+					
+					// 重置监听器状态并立即设置监听器
+					that.characteristicListenerSet = false;
+					that.setupCharacteristicListener();
+
+					// 延迟重新获取设备服务和特征值，确保连接稳定
+					setTimeout(() => {
+						that.getBLEDeviceServices(device.deviceId);
+					}, 1000);
+
+					// 启动连接监控
+					that.startConnectionMonitor();
+					
+					// 强制更新UI，确保用户看到连接状态
+					that.$forceUpdate();
+				},
+				fail: (err) => {
+					console.error('连接设备失败', err);
+					that.deviceStatus = '连接失败';
+					// 强制更新UI，让用户看到连接失败
+					that.$forceUpdate();
+				}
+			});
+		},
 
 		// 启动连接监控
 		startConnectionMonitor() {
@@ -760,8 +830,10 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 
 			// 连接设备
 		connectDevice(device) {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
 			console.log('连接设备', device);
-			if (!this.bluetoothEnabled) {
+			if (!that.bluetoothEnabled) {
 				uni.showToast({
 					title: '请先开启蓝牙',
 					icon: 'none'
@@ -770,13 +842,13 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			}
 
 			// 如果已经有连接的设备，先断开
-			if (this.connectedDeviceId && this.connectedDeviceId !== device.deviceId) {
-				this.disconnectDevice({deviceId: this.connectedDeviceId});
+			if (that.connectedDeviceId && that.connectedDeviceId !== device.deviceId) {
+				that.disconnectDevice({deviceId: that.connectedDeviceId});
 			}
 
-			this.deviceStatus = '连接中...';
+			that.deviceStatus = '连接中...';
 			// 强制更新UI，让用户看到连接状态变化
-			this.$forceUpdate();
+			that.$forceUpdate();
 
 			// 使用uni-app的蓝牙API连接设备
 			uni.createBLEConnection({
@@ -786,18 +858,18 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 
 					// 立即更新设备状态，不等待后续操作
 					device.connected = true;
-					this.connectedDeviceId = device.deviceId;
-					this.deviceName = device.name || '未知设备';
-					this.deviceStatus = '已连接';
-					this.deviceInfo.show = true;
-					this.deviceInfo.connected = true;
-					this.deviceInfo.name = device.name || '未知设备';
+					that.connectedDeviceId = device.deviceId;
+					that.deviceName = device.name || '未知设备';
+					that.deviceStatus = '已连接';
+					that.deviceInfo.show = true;
+					that.deviceInfo.connected = true;
+					that.deviceInfo.name = device.name || '未知设备';
 
 					// 立即设置监听器，确保不错过任何数据
-					this.setupCharacteristicListener();
+					that.setupCharacteristicListener();
 
 					// 停止搜索
-					this.stopSearchDevices();
+					that.stopSearchDevices();
 
 					// 保存连接状态到本地存储
 					uni.setStorageSync('connectedDeviceId', device.deviceId);
@@ -805,14 +877,17 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 
 					// 延迟获取设备服务，确保连接稳定
 					setTimeout(() => {
-						this.getBLEDeviceServices(device.deviceId);
+						that.getBLEDeviceServices(device.deviceId);
 					}, 1000); // 增加延迟时间到1秒，确保连接完全稳定
 
 					// 启动连接监控
-					this.startConnectionMonitor();
+					that.startConnectionMonitor();
 
 					// 强制更新UI，确保用户看到连接成功状态
-					this.$forceUpdate();
+				that.$forceUpdate();
+				
+				// 连接成功后只打印一次deviceInfo当前状态
+				console.log('deviceInfo当前状态:', JSON.stringify(that.deviceInfo));
 					
 					uni.showToast({
 						title: '连接成功',
@@ -821,11 +896,11 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 				},
 				fail: (err) => {
 					console.error('连接设备失败', err);
-					this.deviceStatus = '连接失败';
+					that.deviceStatus = '连接失败';
 					// 清除存储的连接状态
-					this.clearConnectedDeviceStorage();
+					that.clearConnectedDeviceStorage();
 					// 强制更新UI
-					this.$forceUpdate();
+					that.$forceUpdate();
 
 					uni.showToast({
 						title: '连接失败',
@@ -981,6 +1056,7 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			
 			// 读取设备信息
 		readDeviceInformation(deviceId) {
+			const that = this;
 			console.log('尝试读取设备信息', deviceId);
 			
 			// UUID标准化函数
@@ -994,7 +1070,7 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			
 			// 查找设备信息服务，使用标准化的UUID进行匹配
 			let serviceId = null;
-			const serviceKeys = Object.keys(this.bleServices);
+			const serviceKeys = Object.keys(that.bleServices);
 			console.log('已发现的服务列表:', serviceKeys);
 			
 			for (const key of serviceKeys) {
@@ -1007,8 +1083,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 				}
 			}
 			
-			if (serviceId && this.bleCharacteristics[serviceId]) {
-				console.log('设备信息服务的特征值列表:', Object.keys(this.bleCharacteristics[serviceId]));
+			if (serviceId && that.bleCharacteristics[serviceId]) {
+				console.log('设备信息服务的特征值列表:', Object.keys(that.bleCharacteristics[serviceId]));
 				// 尝试读取各种设备信息
 				const characteristicsToRead = [
 					{ id: '2a24', key: 'model', name: '设备型号' },
@@ -1030,7 +1106,7 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					let charId = null;
 					
 					// 查找特征值，使用标准化的UUID进行匹配
-					const charKeys = Object.keys(this.bleCharacteristics[serviceId]);
+					const charKeys = Object.keys(that.bleCharacteristics[serviceId]);
 					for (const charKey of charKeys) {
 						const normalizedCharKey = normalizeUUID(charKey);
 						console.log(`检查特征值: ${charKey} (normalized: ${normalizedCharKey})，寻找: ${id}`);
@@ -1042,14 +1118,14 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					}
 					
 					if (charId) {
-						const char = this.bleCharacteristics[serviceId][charId];
+						const char = that.bleCharacteristics[serviceId][charId];
 						
 						// 检查是否有读取权限
 						if (char.properties.read) {
 							console.log(`尝试读取${name}: ${serviceId}/${charId}`);
 							// 延迟读取，避免API调用过于频繁
 							setTimeout(() => {
-								this.readDeviceCharacteristicValue(deviceId, serviceId, charId);
+								that.readDeviceCharacteristicValue(deviceId, serviceId, charId);
 								readIndex++;
 								readNextCharacteristic();
 							}, 200);
@@ -1059,12 +1135,11 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 							if (char.properties.notify || char.properties.indicate) {
 								console.log(`尝试启用${name}特征值通知`);
 								setTimeout(() => {
-									this.notifyBLECharacteristicValueChange(deviceId, serviceId, charId);
+									that.notifyBLECharacteristicValueChange(deviceId, serviceId, charId);
 									readIndex++;
 									readNextCharacteristic();
 								}, 200);
 							} else {
-								readIndex++;
 								readNextCharacteristic();
 							}
 						}
@@ -1080,112 +1155,117 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			} else {
 				console.log('未找到设备信息服务或特征值');
 				// 如果没有找到设备信息服务，尝试直接读取（可能服务UUID格式不同）
-				this.directReadDeviceInfo(deviceId);
+				that.directReadDeviceInfo(deviceId);
 			}
 		},
-			
+
 			// 读取电池电量
-			readBatteryLevel(deviceId) {
-				console.log('尝试读取电池电量', deviceId);
-				const serviceId = this.bleServices['0x180f'] ? '0x180f' : '180f';
-				const characteristicId = '0x2a19';
-				
-				if (serviceId && this.bleCharacteristics[serviceId] && 
-					(this.bleCharacteristics[serviceId][characteristicId] || 
-					 this.bleCharacteristics[serviceId][characteristicId.replace('0x', '')])) {
-					const charId = this.bleCharacteristics[serviceId][characteristicId] ? 
-						characteristicId : characteristicId.replace('0x', '');
-					const char = this.bleCharacteristics[serviceId][charId];
-					
-					// 检查是否有读取权限
-					if (char.properties.read) {
-						console.log('尝试读取电池电量');
-						this.readDeviceCharacteristicValue(deviceId, serviceId, charId);
-					} else if (char.properties.notify) {
-						console.log('电池电量特征值支持通知，设置通知');
-						this.notifyBLECharacteristicValueChange(deviceId, serviceId, charId);
-					}
-				}
-			},
-
-			// 获取蓝牙设备特征值
-		getBLEDeviceCharacteristics(deviceId, serviceId) {
-			console.log('获取设备特征值', deviceId, serviceId);
-
-			// 初始化该服务的特征值对象
-			if (!this.bleCharacteristics[serviceId]) {
-				this.bleCharacteristics[serviceId] = {};
-			}
+		readBatteryLevel(deviceId) {
+			const that = this;
+			console.log('尝试读取电池电量', deviceId);
+			const serviceId = that.bleServices['0x180f'] ? '0x180f' : '180f';
+			const characteristicId = '0x2a19';
 			
-			// 设置特征值监听器（如果还没有设置）
-			if (!this.characteristicListenerSet) {
-				this.setupCharacteristicListener();
+			if (serviceId && that.bleCharacteristics[serviceId] && 
+				(that.bleCharacteristics[serviceId][characteristicId] || 
+				 that.bleCharacteristics[serviceId][characteristicId.replace('0x', '')])) {
+				const charId = that.bleCharacteristics[serviceId][characteristicId] ? 
+					characteristicId : characteristicId.replace('0x', '');
+				const char = that.bleCharacteristics[serviceId][charId];
+				
+				// 检查是否有读取权限
+				if (char.properties.read) {
+					console.log('尝试读取电池电量');
+					that.readDeviceCharacteristicValue(deviceId, serviceId, charId);
+				} else if (char.properties.notify) {
+					console.log('电池电量特征值支持通知，设置通知');
+					that.notifyBLECharacteristicValueChange(deviceId, serviceId, charId);
+				}
 			}
+		},
 
-				uni.getBLEDeviceCharacteristics({
-					deviceId: deviceId,
-					serviceId: serviceId,
-					success: (res) => {
-						console.log('获取设备特征值成功', res);
+		// 获取蓝牙设备特征值
+	getBLEDeviceCharacteristics(deviceId, serviceId) {
+		// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+		const that = this;
+		console.log('获取设备特征值', deviceId, serviceId);
 
-						// 遍历所有特征值
-						res.characteristics.forEach(characteristic => {
-							console.log('特征值UUID:', characteristic.uuid);
-							
-							// 保存特征值信息
-							this.bleCharacteristics[serviceId][characteristic.uuid] = characteristic;
+		// 初始化该服务的特征值对象
+		if (!that.bleCharacteristics[serviceId]) {
+			that.bleCharacteristics[serviceId] = {};
+		}
+		
+		// 设置特征值监听器（如果还没有设置）
+		if (!that.characteristicListenerSet) {
+			that.setupCharacteristicListener();
+		}
 
-							// 如果特征值支持通知或指示，则启用通知
-							if (characteristic.properties.notify || characteristic.properties.indicate) {
-								this.notifyBLECharacteristicValueChange(deviceId, serviceId, characteristic.uuid);
-							}
-							
-							// 如果特征值支持读取，则读取设备信息
-							if (characteristic.properties.read) {
-								// 延迟读取，确保通知已正确设置
-								setTimeout(() => {
-									this.readDeviceCharacteristicValue(deviceId, serviceId, characteristic.uuid);
-								}, 200);
-							}
-						});
-					},
-					fail: (err) => {
-						console.error('获取设备特征值失败', err);
-					},
-				});
-			},
+			uni.getBLEDeviceCharacteristics({
+				deviceId: deviceId,
+				serviceId: serviceId,
+				success: (res) => {
+					console.log('获取设备特征值成功', res);
+
+					// 遍历所有特征值
+					res.characteristics.forEach(characteristic => {
+						console.log('特征值UUID:', characteristic.uuid);
+						
+						// 保存特征值信息
+						that.bleCharacteristics[serviceId][characteristic.uuid] = characteristic;
+
+						// 如果特征值支持通知或指示，则启用通知
+						if (characteristic.properties.notify || characteristic.properties.indicate) {
+							that.notifyBLECharacteristicValueChange(deviceId, serviceId, characteristic.uuid);
+						}
+						
+						// 如果特征值支持读取，则读取设备信息
+						if (characteristic.properties.read) {
+							// 延迟读取，确保通知已正确设置
+							setTimeout(() => {
+								that.readDeviceCharacteristicValue(deviceId, serviceId, characteristic.uuid);
+							}, 200);
+						}
+					});
+				},
+				fail: (err) => {
+					console.error('获取设备特征值失败', err);
+				},
+			});
+		},
 
 			// 启用蓝牙设备特征值变化通知
-			notifyBLECharacteristicValueChange(deviceId, serviceId, characteristicId) {
-				console.log('启用蓝牙设备特征值变化通知', deviceId, serviceId, characteristicId);
+		notifyBLECharacteristicValueChange(deviceId, serviceId, characteristicId) {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
+			console.log('启用蓝牙设备特征值变化通知', deviceId, serviceId, characteristicId);
 
-				// 移除之前的监听器，避免重复监听
-				uni.offBLECharacteristicValueChange();
+			// 移除之前的监听器，避免重复监听
+			uni.offBLECharacteristicValueChange();
 
-				// 先监听特征值变化
-				uni.onBLECharacteristicValueChange((res) => {
-					console.log('特征值变化', res);
-					// 确保是当前连接的设备
-					if (res.deviceId === this.connectedDeviceId) {
-						// 处理接收到的数据
-						this.handleCharacteristicValueChange(res);
-					}
-				});
+			// 先监听特征值变化
+			uni.onBLECharacteristicValueChange((res) => {
+				console.log('特征值变化', res);
+				// 确保是当前连接的设备
+				if (res.deviceId === that.connectedDeviceId) {
+					// 处理接收到的数据
+					that.handleCharacteristicValueChange(res);
+				}
+			});
 
-				// 然后启用通知
-				uni.notifyBLECharacteristicValueChange({
-					deviceId: deviceId,
-					serviceId: serviceId,
-					characteristicId: characteristicId,
-					state: true,
-					success: (res) => {
-						console.log('启用蓝牙设备特征值变化通知成功', res);
-					},
-					fail: (err) => {
-						console.error('启用蓝牙设备特征值变化通知失败', err);
-					}
-				});
-			},
+			// 然后启用通知
+			uni.notifyBLECharacteristicValueChange({
+				deviceId: deviceId,
+				serviceId: serviceId,
+				characteristicId: characteristicId,
+				state: true,
+				success: (res) => {
+					console.log('启用蓝牙设备特征值变化通知成功', res);
+				},
+				fail: (err) => {
+					console.error('启用蓝牙设备特征值变化通知失败', err);
+				}
+			});
+		},
 
 			// 处理接收到的数据
 			handleReceivedData(buffer) {
@@ -1210,133 +1290,141 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			},
 
 			// 读取设备特征值数据
-			readDeviceCharacteristicValue(deviceId, serviceId, characteristicId) {
-				console.log('读取设备特征值数据', deviceId, serviceId, characteristicId);
+		readDeviceCharacteristicValue(deviceId, serviceId, characteristicId) {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
+			console.log('读取设备特征值数据', deviceId, serviceId, characteristicId);
+
+			uni.readBLECharacteristicValue({
+				deviceId: deviceId,
+				serviceId: serviceId,
+				characteristicId: characteristicId,
+				success: (res) => {
+					console.log('读取特征值成功', res);
+					// 读取操作成功后，需要等待onBLECharacteristicValueChange回调获取数据
+				},
+				fail: (err) => {
+					console.error('读取特征值失败', err);
+				}
+			});
+		},
+
+			// 监听特征值变化
+		setupCharacteristicListener() {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
+			console.log('设置特征值监听器');
+			// 先移除可能存在的旧监听器
+			uni.offBLECharacteristicValueChange();
+			
+			// 设置新的监听器
+			uni.onBLECharacteristicValueChange(that.handleCharacteristicValueChange.bind(that));
+			that.characteristicListenerSet = true;
+			console.log('特征值监听器设置完成');
+		},
+			
+			// 直接读取设备信息（备用方法）
+		directReadDeviceInfo(deviceId) {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
+			console.log('尝试直接读取设备信息');
+			// UUID标准化函数
+			const normalizeUUID = (uuid) => {
+				// 移除可能的前缀
+				let normalized = uuid.toLowerCase().replace(/^0x|^0X/g, '');
+				// 移除可能的连字符
+				normalized = normalized.replace(/-/g, '');
+				return normalized;
+			};
+
+			// 尝试直接使用标准UUID读取设备信息，不依赖于服务发现
+			const serviceIds = ['0x180a', '180a', '0X180A', '0000180a-0000-1000-8000-00805f9b34fb'];
+			const characteristics = [
+				{ id: '0x2a24', altIds: ['2a24', '00002a24-0000-1000-8000-00805f9b34fb'], key: 'model', name: '设备型号' },
+				{ id: '0x2a25', altIds: ['2a25', '00002a25-0000-1000-8000-00805f9b34fb'], key: 'serialNumber', name: '序列号' },
+				{ id: '0x2a26', altIds: ['2a26', '00002a26-0000-1000-8000-00805f9b34fb'], key: 'firmwareVersion', name: '固件版本' },
+				{ id: '0x2a27', altIds: ['2a27', '00002a27-0000-1000-8000-00805f9b34fb'], key: 'hardwareVersion', name: '硬件版本' },
+				{ id: '0x2a28', altIds: ['2a28', '00002a28-0000-1000-8000-00805f9b34fb'], key: 'softwareVersion', name: '软件版本' },
+				{ id: '0x2a29', altIds: ['2a29', '00002a29-0000-1000-8000-00805f9b34fb'], key: 'manufacturer', name: '制造商' }
+			];
+
+			let serviceIndex = 0;
+			let charIndex = 0;
+			let charIdIndex = 0;
+
+			const tryReadCharacteristic = () => {
+				if (serviceIndex >= serviceIds.length) {
+					console.log('直接读取设备信息完成');
+					return;
+				}
+
+				if (charIndex >= characteristics.length) {
+					// 尝试下一个服务
+					serviceIndex++;
+					charIndex = 0;
+					charIdIndex = 0;
+					tryReadCharacteristic();
+					return;
+				}
+
+				const serviceId = serviceIds[serviceIndex];
+				const { id, altIds, key, name } = characteristics[charIndex];
+
+				// 获取当前要尝试的特征值ID
+				const allCharIds = [id, ...altIds];
+				if (charIdIndex >= allCharIds.length) {
+					// 当前特征值的所有ID都尝试过了，尝试下一个特征值
+					charIndex++;
+					charIdIndex = 0;
+					tryReadCharacteristic();
+					return;
+				}
+
+				const characteristicId = allCharIds[charIdIndex];
+
+				console.log(`尝试直接读取 ${name}: ${serviceId}/${characteristicId}`);
 
 				uni.readBLECharacteristicValue({
 					deviceId: deviceId,
-					serviceId: serviceId,
-					characteristicId: characteristicId,
-					success: (res) => {
-						console.log('读取特征值成功', res);
-						// 读取操作成功后，需要等待onBLECharacteristicValueChange回调获取数据
-					},
-					fail: (err) => {
-						console.error('读取特征值失败', err);
-					}
-				});
-			},
+				serviceId: serviceId,
+				characteristicId: characteristicId,
+				success: (res) => {
+					console.log(`直接读取${name}成功，等待数据回调`, res);
+					// 读取成功后，继续尝试下一个特征值
+					charIndex++;
+					charIdIndex = 0;
+					setTimeout(tryReadCharacteristic, 300);
+				},
+				fail: (err) => {
+					console.log(`直接读取${name}失败 (${serviceId}/${characteristicId}):`, err);
+					// 尝试当前特征值的下一个ID格式
+					charIdIndex++;
+					setTimeout(tryReadCharacteristic, 100);
+				}
+			});
+			};
 
-			// 监听特征值变化
-			setupCharacteristicListener() {
-				console.log('设置特征值监听器');
-				// 先移除可能存在的旧监听器
-				uni.offBLECharacteristicValueChange();
-				
-				// 设置新的监听器
-				uni.onBLECharacteristicValueChange(this.handleCharacteristicValueChange.bind(this));
-				this.characteristicListenerSet = true;
-				console.log('特征值监听器设置完成');
-			},
-			
-			// 直接读取设备信息（备用方法）
-			directReadDeviceInfo(deviceId) {
-				console.log('尝试直接读取设备信息');
-				// UUID标准化函数
-				const normalizeUUID = (uuid) => {
-					// 移除可能的前缀
-					let normalized = uuid.toLowerCase().replace(/^0x|^0X/g, '');
-					// 移除可能的连字符
-					normalized = normalized.replace(/-/g, '');
-					return normalized;
-				};
-				
-				// 尝试直接使用标准UUID读取设备信息，不依赖于服务发现
-				const serviceIds = ['0x180a', '180a', '0X180A', '0000180a-0000-1000-8000-00805f9b34fb'];
-				const characteristics = [
-					{ id: '0x2a24', altIds: ['2a24', '00002a24-0000-1000-8000-00805f9b34fb'], key: 'model', name: '设备型号' },
-					{ id: '0x2a25', altIds: ['2a25', '00002a25-0000-1000-8000-00805f9b34fb'], key: 'serialNumber', name: '序列号' },
-					{ id: '0x2a26', altIds: ['2a26', '00002a26-0000-1000-8000-00805f9b34fb'], key: 'firmwareVersion', name: '固件版本' },
-					{ id: '0x2a27', altIds: ['2a27', '00002a27-0000-1000-8000-00805f9b34fb'], key: 'hardwareVersion', name: '硬件版本' },
-					{ id: '0x2a28', altIds: ['2a28', '00002a28-0000-1000-8000-00805f9b34fb'], key: 'softwareVersion', name: '软件版本' },
-					{ id: '0x2a29', altIds: ['2a29', '00002a29-0000-1000-8000-00805f9b34fb'], key: 'manufacturer', name: '制造商' }
-				];
-				
-				let serviceIndex = 0;
-				let charIndex = 0;
-				let charIdIndex = 0;
-				
-				const tryReadCharacteristic = () => {
-					if (serviceIndex >= serviceIds.length) {
-						console.log('直接读取设备信息完成');
-						return;
-					}
-					
-					if (charIndex >= characteristics.length) {
-						// 尝试下一个服务
-						serviceIndex++;
-						charIndex = 0;
-						charIdIndex = 0;
-						tryReadCharacteristic();
-						return;
-					}
-					
-					const serviceId = serviceIds[serviceIndex];
-					const { id, altIds, key, name } = characteristics[charIndex];
-					
-					// 获取当前要尝试的特征值ID
-					const allCharIds = [id, ...altIds];
-					if (charIdIndex >= allCharIds.length) {
-						// 当前特征值的所有ID都尝试过了，尝试下一个特征值
-						charIndex++;
-						charIdIndex = 0;
-						tryReadCharacteristic();
-						return;
-					}
-					
-					const characteristicId = allCharIds[charIdIndex];
-					
-					console.log(`尝试直接读取 ${name}: ${serviceId}/${characteristicId}`);
-					
-					uni.readBLECharacteristicValue({
-						deviceId: deviceId,
-					serviceId: serviceId,
-					characteristicId: characteristicId,
-					success: (res) => {
-						console.log(`直接读取${name}成功，等待数据回调`, res);
-						// 读取成功后，继续尝试下一个特征值
-						charIndex++;
-						charIdIndex = 0;
-						setTimeout(tryReadCharacteristic, 300);
-					},
-					fail: (err) => {
-						console.log(`直接读取${name}失败 (${serviceId}/${characteristicId}):`, err);
-						// 尝试当前特征值的下一个ID格式
-						charIdIndex++;
-						setTimeout(tryReadCharacteristic, 100);
-					}
-					});
-				};
-				
-				// 开始尝试读取
-				tryReadCharacteristic();
-			},
+			// 开始尝试读取
+			tryReadCharacteristic();
+		},
 			
 			// 处理特征值变化
 		handleCharacteristicValueChange(res) {
+			// 保存当前组件实例的this引用，确保在所有回调中都能正确访问
+			const that = this;
 			console.log('特征值变化', res);
 			const { deviceId, serviceId, characteristicId, value } = res;
 
 			// 确保是当前连接的设备
-			if (deviceId !== this.connectedDeviceId) {
+			if (deviceId !== that.connectedDeviceId) {
 				console.log('忽略非当前连接设备的数据');
 				return;
 			}
 
 			// 将ArrayBuffer转换为16进制字符串
-			const hexString = this.ab2hex(value);
+			const hexString = that.ab2hex(value);
 			// 将ArrayBuffer转换为字符串
-			const strValue = this.ab2str(value);
+			const strValue = that.ab2str(value);
 
 			// 标准化UUID格式（移除前缀并转为小写）
 			const normalizeUUID = (uuid) => {
@@ -1353,8 +1441,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			console.log(`Service: ${serviceId} (normalized: ${normalizedServiceId}), Characteristic: ${characteristicId} (normalized: ${normalizedCharId}), Value: ${hexString}, String: "${strValue}"`);
 
 			// 确保设备信息区域显示
-			if (!this.deviceInfo.show) {
-				this.deviceInfo.show = true;
+			if (!that.deviceInfo.show) {
+				that.deviceInfo.show = true;
 				console.log('设置deviceInfo.show为true');
 			}
 
@@ -1364,8 +1452,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					try {
 						// 电池电量是一个字节的数值 (0-100)
 						const batteryLevel = new Uint8Array(value)[0];
-						this.deviceInfo.batteryLevel = `${batteryLevel}%`;
-						console.log('电池电量:', this.deviceInfo.batteryLevel);
+						that.deviceInfo.batteryLevel = `${batteryLevel}%`;
+						console.log('电池电量:', that.deviceInfo.batteryLevel);
 					} catch (error) {
 						console.error('解析电池电量失败:', error);
 					}
@@ -1379,8 +1467,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					case '2a24': // Model
 						console.log('检测到设备型号特征值(2a24)，原始值:', strValue);
 						if (strValue && strValue.trim()) {
-							this.deviceInfo.model = strValue.trim();
-							console.log('更新设备型号为:', this.deviceInfo.model);
+							that.deviceInfo.model = strValue.trim();
+							console.log('更新设备型号为:', that.deviceInfo.model);
 						} else {
 							console.log('设备型号值为空或只有空白字符');
 						}
@@ -1388,8 +1476,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					case '2a25': // Serial Number
 						console.log('检测到序列号特征值(2a25)，原始值:', strValue);
 						if (strValue && strValue.trim()) {
-							this.deviceInfo.serialNumber = strValue.trim();
-							console.log('更新序列号为:', this.deviceInfo.serialNumber);
+							that.deviceInfo.serialNumber = strValue.trim();
+							console.log('更新序列号为:', that.deviceInfo.serialNumber);
 						} else {
 							console.log('序列号值为空或只有空白字符');
 						}
@@ -1397,8 +1485,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					case '2a26': // Firmware Version
 						console.log('检测到固件版本特征值(2a26)，原始值:', strValue);
 						if (strValue && strValue.trim()) {
-							this.deviceInfo.firmwareVersion = strValue.trim();
-							console.log('更新固件版本为:', this.deviceInfo.firmwareVersion);
+							that.deviceInfo.firmwareVersion = strValue.trim();
+							console.log('更新固件版本为:', that.deviceInfo.firmwareVersion);
 						} else {
 							console.log('固件版本值为空或只有空白字符');
 						}
@@ -1406,8 +1494,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					case '2a27': // Hardware Version
 						console.log('检测到硬件版本特征值(2a27)，原始值:', strValue);
 						if (strValue && strValue.trim()) {
-							this.deviceInfo.hardwareVersion = strValue.trim();
-							console.log('更新硬件版本为:', this.deviceInfo.hardwareVersion);
+							that.deviceInfo.hardwareVersion = strValue.trim();
+							console.log('更新硬件版本为:', that.deviceInfo.hardwareVersion);
 						} else {
 							console.log('硬件版本值为空或只有空白字符');
 						}
@@ -1415,8 +1503,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					case '2a28': // Software Version
 						console.log('检测到软件版本特征值(2a28)，原始值:', strValue);
 						if (strValue && strValue.trim()) {
-							this.deviceInfo.softwareVersion = strValue.trim();
-							console.log('更新软件版本为:', this.deviceInfo.softwareVersion);
+							that.deviceInfo.softwareVersion = strValue.trim();
+							console.log('更新软件版本为:', that.deviceInfo.softwareVersion);
 						} else {
 							console.log('软件版本值为空或只有空白字符');
 						}
@@ -1424,8 +1512,8 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 					case '2a29': // Manufacturer Name
 						console.log('检测到制造商特征值(2a29)，原始值:', strValue);
 						if (strValue && strValue.trim()) {
-							this.deviceInfo.manufacturer = strValue.trim();
-							console.log('更新制造商为:', this.deviceInfo.manufacturer);
+							that.deviceInfo.manufacturer = strValue.trim();
+							console.log('更新制造商为:', that.deviceInfo.manufacturer);
 						} else {
 							console.log('制造商值为空或只有空白字符');
 						}
@@ -1436,20 +1524,18 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 			}
 			
 			// 立即强制更新设备名称
-			if (this.deviceName === '智能骑行传感器 A1' && strValue && strValue.trim()) {
+			if (that.deviceName === '智能骑行传感器 A1' && strValue && strValue.trim()) {
 				// 尝试从设备信息中获取设备名称
 				if (normalizedCharId === '2a24' || normalizedCharId === '2a29') {
-					this.deviceName = strValue.trim();
-					console.log('更新设备名称为:', this.deviceName);
+					that.deviceName = strValue.trim();
+					console.log('更新设备名称为:', that.deviceName);
 				}
 			}
 			
 			// 记录deviceInfo当前状态
-			console.log('deviceInfo当前状态:', JSON.stringify(this.deviceInfo));
-			
 			// 强制更新UI，确保用户能看到最新状态
-			this.$forceUpdate();
-			console.log('强制更新UI后');
+			that.$forceUpdate();
+			// console.log('强制更新UI后');
 		},
 
 			// ArrayBuffer转字符串
@@ -1479,8 +1565,9 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 						url: '/pages/index/index'
 					});
 				}
-			},
-		}
+			}
+		},
+}		
 </script>
 
 <style>
@@ -1749,3 +1836,5 @@ updateConnectedState(savedDeviceId, savedDeviceName) {
 
 
 </style>
+
+
